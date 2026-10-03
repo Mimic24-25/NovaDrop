@@ -183,7 +183,7 @@ button.yes{background:#22c55e;color:#04210f}button.no{background:#ef4444;color:#
    <h2 id="cname"></h2>
    <p id="cdesc"></p>
    <div class="drops" id="drops"></div>
-   <p style="margin-top:10px"><button id="open"></button> <button class="ghost" id="bonus">Порыться в карманах (+100 ₽)</button></p>
+   <p style="margin-top:10px"><button id="open"></button></p>
   </div>
  </div>
  <div class="roll" id="roll"><div class="strip" id="strip"></div></div>
@@ -248,7 +248,7 @@ button.yes{background:#22c55e;color:#04210f}button.no{background:#ef4444;color:#
  <p style="margin:14px 0 0"><b>Предметы</b></p>
  <select id="aitem"></select>
  <input id="aqty" type="number" min="1" max="100" value="1" placeholder="Количество">
- <button id="agivei">Выдать предметы</button>
+ <button id="agivei">Выдать предметы</button> <button id="atakei" class="danger">Забрать предметы</button>
  <div class="result" id="ares"></div>
 </section>
 </div>
@@ -315,7 +315,30 @@ mk("cyber","🤖","Киберсвалка 2077",20000,"Списанные имп
 mk("heaven","☁️","Небесная сокровищница",45000,"Облака, арфы и чужие нимбы.",[["🪶","Перо ангела"],["☁️","Облако в банке"],["📯","Небесный рог"],["🪽","Крылья"],["😇","Нимб"],["✨","Звезда с неба"]]),
 mk("pandora","🎁","Ящик Пандоры",100000,"Открывать страшно. Закрывать поздно.",[["🌪️","Мини-торнадо"],["🎲","Проклятые кости"],["📖","Книга теней"],["🦄","Единорог"],["⏳","Часы времени"],["🌠","Исполнение желания"]])
 );
+CASES.push(
+ mk("circus","🎪","Бродячий цирк",180,"Шатры, реквизит и забытый фокусник.",[["🎈","Лопнувший шарик"],["🤡","Красный нос"],["🎭","Театральная маска"],["🎩","Цилиндр фокусника"],["🐘","Дрессированный слон"],["🎪","Шатёр шапито"]]),
+ mk("factory","🏭","Заброшенный завод",500,"Станки, шестерни и ржавые цеха.",[["⚙️","Ржавая шестерня"],["🔩","Гайка M10"],["🧯","Огнетушитель"],["🛠️","Станок ЧПУ"],["🏗️","Башенный кран"],["🏭","Целый завод"]]),
+ mk("pirates","🏴‍☠️","Остров пиратов",2500,"Карты, бочки и чёрный флаг.",[["🪵","Обломок мачты"],["🍺","Бочка рома"],["🦜","Попугай-штурман"],["🗡️","Абордажная сабля"],["👒","Шляпа капитана"],["💰","Сундук Весёлого Роджера"]]),
+ mk("casino","🎰","Подземное казино",6500,"Фишки, кости и чужие долги.",[["🃏","Крапленая карта"],["🎲","Игральные кости"],["🪙","Фишка казино"],["🥃","Виски из бара"],["🎰","Игровой автомат"],["💎","Бриллиантовый джекпот"]]),
+ mk("temple","🛕","Забытый храм",12000,"Статуи, свитки и древние ловушки.",[["🪔","Масляная лампа"],["🧿","Амулет"],["📿","Чётки монаха"],["🗿","Идол древних"],["🔮","Хрустальный шар"],["🛕","Золотой алтарь"]]),
+ mk("blackhole","🕳️","Чёрная дыра",70000,"Здесь всё исчезает. Иногда возвращается.",[["🌑","Тёмная материя"],["☄️","Осколок кометы"],["🪐","Обломок планеты"],["🛰️","Забытый зонд"],["⏱️","Часы горизонта событий"],["🌌","Сингулярность"]])
+);
+CASES.push(
+ {id:"free1",e:"🎁",n:"Бесплатный бак",p:0,free:60000,d:"Бесплатно раз в минуту. Дроп скромный.",w:[62,30,7,1,0],it:[["🧃","Пакет из-под сока","junk",2],["🥡","Коробка от лапши","junk",3],["🪙","Ржавая копейка","trash",12],["🔦","Фонарик без батареек","find",45],["🧸","Потёртый зайчик","rare",160]]},
+ {id:"free5",e:"🎀",n:"Бесплатный контейнер",p:0,free:300000,d:"Бесплатно раз в 5 минут. Дроп получше.",w:[35,35,20,9,1],it:[["🍂","Охапка листьев","junk",8],["🍾","Пустая бутылка","junk",10],["🔑","Старый ключ","trash",45],["⌚","Часы с гравировкой","find",160],["🎻","Скрипка мастера","rare",650],["🏺","Греческая ваза","gold",3200]]}
+);
 CASES.sort((a,b)=>a.p-b.p);
+const fr={};
+function resetFree(){CASES.forEach(c=>{if(c.free)fr[c.id]=Date.now()+c.free})}
+resetFree();
+function freeLeft(c){return c.free?Math.max(0,(fr[c.id]||0)-Date.now()):0}
+function fmtLeft(l){return Math.floor(l/60000)+":"+String(Math.floor(l/1000)%60).padStart(2,"0")}
+function renderOpenBtn(){
+ const c=CASES[cur],l=freeLeft(c),b=$("open");
+ if(c.free){b.textContent=l>0?`Доступно через ${fmtLeft(l)}`:"Открыть бесплатно";b.disabled=busy||l>0}
+ else{b.textContent=`Открыть за ${f(c.p)} ₽`;b.disabled=busy||bal<c.p}
+}
+setInterval(()=>{if(me&&!$("t-cases").hidden)renderOpenBtn()},1000);
 const ALL=[...new Map(CASES.flatMap(c=>c.it).map(i=>[i[1],i])).values()];
 let bal=500,inv=[],busy=false,cur=0,sel=[],tgt=null,hold=false;
 const $=id=>document.getElementById(id);
@@ -344,7 +367,7 @@ addEventListener("pagehide",()=>{if(dirty&&me&&sessionToken)api("save_game",{p_t
 function save(){scheduleSave()}
 function showTab(x){if(x==="admin"&&me!=="admin")x="cases";["cases","inv","up","top","tx","prof","admin"].forEach(t=>{$("t-"+t).hidden=t!==x});document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.tab===x));if(x==="admin")renderAdmin();if(x==="prof")renderProf();if(x==="top")loadTop();if(x==="tx")loadTx()}
 function applyAccount(a){users[me]={...users[me],...a};bal=Number(a.balance??a.bal??bal);inv=a.inventory??a.inv??inv;myv=Number(a.version??a.v??myv);mysess=a.session_id||mysess}
-function startApp(account){me=account.nick_key;ep++;dirty=false;saveAgain=false;clearTimeout(saveTimer);mysess=account.session_id||"";myv=Number(account.version||0);applyAccount(account);sel=[];tgt=null;busy=false;hold=false;localStorage.setItem("novadrop_nick",me);$("auth").hidden=true;$("app").hidden=false;$("res").textContent="";$("upres").textContent="";showTab("cases");render()}
+function startApp(account){me=account.nick_key;ep++;resetFree();setTimeout(()=>{api("g_visit",{p_token:sessionToken}).then(syncFreeFrom).catch(()=>{})},0);dirty=false;saveAgain=false;clearTimeout(saveTimer);mysess=account.session_id||"";myv=Number(account.version||0);applyAccount(account);sel=[];tgt=null;busy=false;hold=false;localStorage.setItem("novadrop_nick",me);$("auth").hidden=true;$("app").hidden=false;$("res").textContent="";$("upres").textContent="";showTab("cases");render()}
 function setMode(m){mode=m;$("tl").classList.toggle("on",m==="login");$("tr").classList.toggle("on",m==="reg");$("asubmit").textContent=m==="login"?"Войти":"Зарегистрироваться";$("aerr").textContent="";$("apass").autocomplete=m==="login"?"current-password":"new-password";$("ahint").textContent=""}
 async function submitAuth(){
  const nick=$("anick").value.trim(),pass=$("apass").value,err=t=>{$("aerr").textContent=t};
@@ -369,19 +392,38 @@ function pick(c){let x=Math.random()*c.w.reduce((a,b)=>a+b,0),t=0;for(;t<4;t++){
 function card(i){return `<div class="card" style="--c:${R[i[2]].c}"><div class="e">${i[0]}</div><div class="n">${i[1]}</div></div>`}
 const f=n=>Number(n).toLocaleString("ru");
 function chance(sum,b){return Math.min(75,Math.max(1,Math.round(sum/b[3]*95)))}
-function render(){const c=CASES[cur];$("bal").textContent=f(bal);renderHav();$("navadmin").hidden=me!=="admin";$("navinv").textContent="Твой хлам ("+inv.length+")";$("navup").textContent="Апгрейдер"+(sel.length?" ("+sel.length+")":"");$("cases").innerHTML=CASES.map((k,i)=>`<button class="cs ${i===cur?"on":""}" data-c="${i}" ${busy?"disabled":""}><span class="e">${k.e}</span>${k.n}<small>${f(k.p)} ₽</small></button>`).join("");$("cic").textContent=c.e;$("cname").textContent=c.n;$("cdesc").textContent=c.d;$("drops").innerHTML=c.it.map(i=>{const t=TIERS.indexOf(i[2]),k=c.it.filter(x=>x[2]===i[2]).length,pc=c.w[t]/k;return `<div style="--c:${R[i[2]].c}"><div style="font-size:26px">${i[0]}</div>${i[1]}<br>${i[3]} ₽<br><b>${+pc.toFixed(1)}%</b></div>`}).join("");$("chance").innerHTML=TIERS.map((t,i)=>`<span style="--c:${R[t].c}">${R[t].n} ${c.w[i]}%</span>`).join("");$("open").textContent=`Открыть за ${f(c.p)} ₽`;$("open").disabled=busy||bal<c.p;$("sellall").disabled=!inv.length||busy;$("empty").style.display=inv.length?"none":"block";$("inv").innerHTML=inv.map((i,idx)=>`<div class="card" style="--c:${R[i[2]].c};${sel.includes(idx)?"outline:2px solid var(--hazard)":""}"><div class="e">${i[0]}</div><div class="n">${i[1]}</div><div class="n" style="color:${R[i[2]].c}">${R[i[2]].n}</div><button data-s="${idx}">Продать ${i[3]} ₽</button> <button class="ghost" data-u="${idx}" style="margin-top:4px;padding:4px 10px;font-size:13px">${sel.includes(idx)?"Убрать":"В апгрейд"}</button></div>`).join("");$("upinv").innerHTML=inv.length?inv.map((i,idx)=>`<div class="card" data-u="${idx}" style="--c:${R[i[2]].c};${sel.includes(idx)?"outline:2px solid var(--hazard)":""}"><div class="e">${i[0]}</div><div class="n">${i[3]} ₽</div></div>`).join(""):`<p class="empty">Хлама нет. Открой кейс.</p>`;const items=sel.map(i=>inv[i]).filter(Boolean),sum=items.reduce((a,i)=>a+i[3],0),pm=upMode==="pct";const tl=items.length&&!pm?ALL.filter(t=>t[3]>=sum&&t[3]<=sum*20).sort((a,b)=>a[3]-b[3]).slice(0,10):[];if(tgt&&!tl.some(t=>t[1]===tgt))tgt=null;const tobj=ALL.find(x=>x[1]===tgt),ch=pm?upPct:(tobj?chance(sum,tobj):0),ready=items.length&&ch;
+function render(){const c=CASES[cur];$("bal").textContent=f(bal);renderHav();$("navadmin").hidden=me!=="admin";$("navinv").textContent="Твой хлам ("+inv.length+")";$("navup").textContent="Апгрейдер"+(sel.length?" ("+sel.length+")":"");$("cases").innerHTML=CASES.map((k,i)=>`<button class="cs ${i===cur?"on":""}" data-c="${i}" ${busy?"disabled":""}><span class="e">${k.e}</span>${k.n}<small>${k.free?"Бесплатно":f(k.p)+" ₽"}</small></button>`).join("");$("cic").textContent=c.e;$("cname").textContent=c.n;$("cdesc").textContent=c.d;$("drops").innerHTML=c.it.map(i=>{const t=TIERS.indexOf(i[2]),k=c.it.filter(x=>x[2]===i[2]).length,pc=c.w[t]/k;return `<div style="--c:${R[i[2]].c}"><div style="font-size:26px">${i[0]}</div>${i[1]}<br>${i[3]} ₽<br><b>${+pc.toFixed(1)}%</b></div>`}).join("");$("chance").innerHTML=TIERS.map((t,i)=>`<span style="--c:${R[t].c}">${R[t].n} ${c.w[i]}%</span>`).join("");renderOpenBtn();$("sellall").disabled=!inv.length||busy;$("empty").style.display=inv.length?"none":"block";$("inv").innerHTML=inv.map((i,idx)=>`<div class="card" style="--c:${R[i[2]].c};${sel.includes(idx)?"outline:2px solid var(--hazard)":""}"><div class="e">${i[0]}</div><div class="n">${i[1]}</div><div class="n" style="color:${R[i[2]].c}">${R[i[2]].n}</div><button data-s="${idx}">Продать ${i[3]} ₽</button> <button class="ghost" data-u="${idx}" style="margin-top:4px;padding:4px 10px;font-size:13px">${sel.includes(idx)?"Убрать":"В апгрейд"}</button></div>`).join("");$("upinv").innerHTML=inv.length?inv.map((i,idx)=>`<div class="card" data-u="${idx}" style="--c:${R[i[2]].c};${sel.includes(idx)?"outline:2px solid var(--hazard)":""}"><div class="e">${i[0]}</div><div class="n">${i[3]} ₽</div></div>`).join(""):`<p class="empty">Хлама нет. Открой кейс.</p>`;const items=sel.map(i=>inv[i]).filter(Boolean),sum=items.reduce((a,i)=>a+i[3],0),pm=upMode==="pct";const tl=items.length&&!pm?ALL.filter(t=>t[3]>=sum&&t[3]<=sum*20).sort((a,b)=>a[3]-b[3]).slice(0,10):[];if(tgt&&!tl.some(t=>t[1]===tgt))tgt=null;const tobj=ALL.find(x=>x[1]===tgt),ch=pm?upPct:(tobj?chance(sum,tobj):0),ready=items.length&&ch;
 $("umode").innerHTML=`<button class="${pm?"ghost":""}" data-m="item">Выбрать предмет</button><button class="${pm?"":"ghost"}" data-m="pct">Выбрать шанс</button>`;
 $("upsel").innerHTML=items.length?`<div class="sg">${sel.map(i=>`<div class="card" data-r="${i}" title="Убрать" style="--c:${R[inv[i][2]].c}"><div class="e">${inv[i][0]}</div><div class="n">${inv[i][3]} ₽</div></div>`).join("")}</div><p class="n" style="text-align:center">Предметов ${items.length} из 5, сумма ${f(sum)} ₽</p>`:`<p class="empty">Предметы не выбраны</p>`;
 $("tg").innerHTML=!items.length?"":pm?[75,55,22].map(p=>`<button class="card ${p===upPct?"pick":""}" data-p="${p}" style="--c:var(--hazard)"><div class="num" style="font-size:26px;color:var(--hazard)">${p}%</div><div class="n">Приз около ${f(Math.round(sum*95/p))} ₽</div></button>`).join(""):tl.map(t=>`<button class="card ${t[1]===tgt?"pick":""}" data-t="${t[1]}" style="--c:${R[t[2]].c}"><div class="e">${t[0]}</div><div class="n">${t[1]}</div><div class="n">${f(t[3])} ₽</div><div class="num" style="color:var(--hazard)">${chance(sum,t)}%</div></button>`).join("")||`<p class="empty">Для такой суммы нет целей</p>`;
 $("wbox").style.display=(ready||hold)?"block":"none";if(ready){$("wheel").style.setProperty("--p",ch+"%");$("pc").textContent=ch+"%"}
 $("upgo").disabled=!ready||busy;$("upgo").textContent=ready?(pm?`Крутить: ${items.length} шт. → шанс ${ch}%`:`Крутить: ${items.length} шт. → ${tobj[0]}`):(pm?"Выбери предметы и шанс":"Выбери предметы и цель");save()}
 $("cases").onclick=e=>{const b=e.target.closest("[data-c]");if(b&&!busy){cur=+b.dataset.c;$("res").textContent="";$("roll").classList.remove("on");render()}};
-$("open").onclick=()=>{const c=CASES[cur];if(busy||bal<c.p)return;busy=true;bal-=c.p;render();$("res").textContent="";const win=pick(c),N=40,W=34,strip=$("strip"),roll=$("roll");const arr=Array.from({length:N},(_,i)=>i===W?win:c.it[Math.floor(Math.random()*c.it.length)]);strip.style.transition="none";strip.style.transform="translateX(0)";strip.innerHTML=arr.map(card).join("");roll.classList.add("on");requestAnimationFrame(()=>requestAnimationFrame(()=>{const off=W*118+55+Math.random()*20-roll.clientWidth/2+8;strip.style.transition="transform 5s cubic-bezier(.12,.7,.1,1)";strip.style.transform=`translateX(${-off}px)`}));const e0=ep;setTimeout(()=>{if(e0!==ep)return;inv.push(win);bumpStat(c,win);busy=false;$("res").innerHTML=`Выпало: <b style="color:${R[win[2]].c}">${win[0]} ${win[1]}</b> (${R[win[2]].n}, ${win[3]} ₽)`;render()},5200)};
-$("bonus").onclick=()=>{bal+=100;render()};
-$("inv").onclick=e=>{if(busy)return;const s=e.target.closest("[data-s]"),u=e.target.closest("[data-u]");if(s){const i=+s.dataset.s;bal+=inv[i][3];inv.splice(i,1);sel=[];tgt=null;render()}if(u)toggleSel(+u.dataset.u)};
+$("open").onclick=async()=>{
+ const c=CASES[cur];if(busy||bal<c.p||freeLeft(c)>0)return;
+ busy=true;$("res").textContent="";render();const e0=ep;
+ let r;try{r=await api("g_open",{p_token:sessionToken,p_case:c.id})}catch(e){busy=false;$("res").textContent=e.message||"Ошибка";await syncFree();await check();render();return}
+ syncFreeFrom(r.free);bal=Number(r.balance);render();
+ const win=r.item,N=40,W=34,strip=$("strip"),roll=$("roll");
+ const arr=Array.from({length:N},(_,i)=>i===W?win:c.it[Math.floor(Math.random()*c.it.length)]);
+ strip.style.transition="none";strip.style.transform="translateX(0)";strip.innerHTML=arr.map(card).join("");roll.classList.add("on");
+ requestAnimationFrame(()=>requestAnimationFrame(()=>{const off=W*118+55+Math.random()*20-roll.clientWidth/2+8;strip.style.transition="transform 5s cubic-bezier(.12,.7,.1,1)";strip.style.transform=`translateX(${-off}px)`}));
+ setTimeout(()=>{if(e0!==ep)return;inv=r.inventory;myv=Number(r.version);bumpStat(c,win);busy=false;$("res").innerHTML=`Выпало: <b style="color:${R[win[2]].c}">${win[0]} ${win[1]}</b> (${R[win[2]].n}, ${win[3]} ₽)`;render()},5200)};
+
+$("inv").onclick=e=>{if(busy)return;const s=e.target.closest("[data-s]"),u=e.target.closest("[data-u]");if(s)sellIdx([+s.dataset.s]);if(u)toggleSel(+u.dataset.u)};
 function toggleSel(i){if(busy)return;$("upres").textContent="";if(sel.includes(i))sel=sel.filter(x=>x!==i);else if(sel.length<5)sel.push(i);else $("upres").textContent="В апгрейде максимум 5 предметов";render()}
-$("upinv").onclick=e=>{const u=e.target.closest("[data-u]");if(u)toggleSel(+u.dataset.u)};$("sellall").onclick=()=>{bal+=inv.reduce((a,i)=>a+i[3],0);inv=[];sel=[];tgt=null;render()};$("umode").onclick=e=>{const b=e.target.closest("[data-m]");if(!b||busy)return;upMode=b.dataset.m;tgt=null;$("upres").textContent="";render()};$("tg").onclick=e=>{if(busy)return;const p=e.target.closest("[data-p]");if(p){upPct=+p.dataset.p;$("upres").textContent="";render();return}const b=e.target.closest("[data-t]");if(!b)return;tgt=b.dataset.t;$("upres").textContent="";render()};$("upsel").onclick=e=>{const r=e.target.closest("[data-r]");if(!r||busy)return;sel=sel.filter(x=>x!==+r.dataset.r);render()};
-$("upgo").onclick=()=>{const items=sel.map(i=>inv[i]),sum=items.reduce((a,i)=>a+i[3],0),pm=upMode==="pct",t=pm?(upPct?prize(sum*95/upPct):null):ALL.find(x=>x[1]===tgt);if(busy||!items.length||!t)return;const ch=pm?upPct:chance(sum,t),win=Math.random()*100<ch,zone=ch*3.6,pad=Math.min(2,zone/4),ang=win?pad+Math.random()*(zone-2*pad):zone+pad+Math.random()*(360-zone-2*pad);busy=true;hold=true;render();const n=$("needle");n.style.transition="none";n.style.transform="rotate(0deg)";void n.offsetWidth;n.style.transition="transform 4s cubic-bezier(.1,.6,.1,1)";n.style.transform=`rotate(${1800+ang}deg)`;$("upres").textContent="Крутим…";const e0=ep;setTimeout(()=>{if(e0!==ep)return;busy=false;[...sel].sort((a,b)=>b-a).forEach(i=>inv.splice(i,1));sel=[];tgt=null;if(win){inv.push(t);$("upres").innerHTML=`Успех! Получен <b style="color:var(--hazard)">${t[0]} ${t[1]}</b>`}else $("upres").textContent=`Не повезло, предметы сгорели (${items.length} шт.).`;render();setTimeout(()=>{hold=false;render()},1800)},4300)};
+$("upinv").onclick=e=>{const u=e.target.closest("[data-u]");if(u)toggleSel(+u.dataset.u)};$("sellall").onclick=()=>sellIdx(inv.map((_,i)=>i));$("umode").onclick=e=>{const b=e.target.closest("[data-m]");if(!b||busy)return;upMode=b.dataset.m;tgt=null;$("upres").textContent="";render()};$("tg").onclick=e=>{if(busy)return;const p=e.target.closest("[data-p]");if(p){upPct=+p.dataset.p;$("upres").textContent="";render();return}const b=e.target.closest("[data-t]");if(!b)return;tgt=b.dataset.t;$("upres").textContent="";render()};$("upsel").onclick=e=>{const r=e.target.closest("[data-r]");if(!r||busy)return;sel=sel.filter(x=>x!==+r.dataset.r);render()};
+$("upgo").onclick=async()=>{
+ const items=sel.map(i=>inv[i]),pm=upMode==="pct";
+ if(busy||!items.length||(pm?!upPct:!tgt))return;
+ busy=true;hold=true;render();$("upres").textContent="Крутим…";const e0=ep;
+ let r;try{r=await api("g_upgrade",{p_token:sessionToken,p_idx:[...sel],p_names:items.map(i=>i[1]),p_target:pm?null:tgt,p_pct:pm?upPct:null})}catch(e){busy=false;hold=false;$("upres").textContent=e.message||"Ошибка";await check();render();return}
+ const ch=r.chance,win=r.win,t=r.target,zone=ch*3.6,pad=Math.min(2,zone/4),ang=win?pad+Math.random()*(zone-2*pad):zone+pad+Math.random()*(360-zone-2*pad);
+ $("wheel").style.setProperty("--p",ch+"%");$("pc").textContent=ch+"%";
+ const n=$("needle");n.style.transition="none";n.style.transform="rotate(0deg)";void n.offsetWidth;n.style.transition="transform 4s cubic-bezier(.1,.6,.1,1)";n.style.transform=`rotate(${1800+ang}deg)`;
+ setTimeout(()=>{if(e0!==ep)return;busy=false;inv=r.inventory;bal=Number(r.balance);myv=Number(r.version);sel=[];tgt=null;
+  if(win)$("upres").innerHTML=`Успех! Получен <b style="color:var(--hazard)">${t[0]} ${t[1]}</b>`;else $("upres").textContent=`Не повезло, предметы сгорели (${items.length} шт.).`;
+  render();setTimeout(()=>{hold=false;render()},1800)},4300)};
 $("nav").onclick=e=>{const b=e.target.closest("[data-tab]");if(b)showTab(b.dataset.tab)};$("tl").onclick=()=>setMode("login");$("tr").onclick=()=>setMode("reg");$("asubmit").onclick=submitAuth;["anick","apass"].forEach(id=>$(id).addEventListener("keydown",e=>{if(e.key==="Enter")submitAuth()}));
 $("logout").onclick=async()=>{if(busy)return;await saveNow();for(let k=0;saveBusy&&k<50;k++)await new Promise(r=>setTimeout(r,100));try{await api("logout_account",{p_token:sessionToken})}catch(e){}sessionToken="";localStorage.removeItem("novadrop_session");me=null;ep++;$("app").hidden=true;$("auth").hidden=false;setMode("login")};
 $("utab").onclick=async e=>{const b=e.target.closest("[data-a]");if(!b||me!=="admin")return;const k=b.dataset.k,a=b.dataset.a,u=users[k];if(!u)return;const r=t=>{$("tres").textContent=t};if(a==="id"){$("aid").value=u.id;r(`ID ${u.id} подставлен в выдачу`);return}try{if(a==="kick"){await api("admin_kick",{p_token:sessionToken,p_target_id:u.id});r(`${u.nick} выкинут из аккаунта`)}if(a==="ban"){await api("admin_ban",{p_token:sessionToken,p_target_id:u.id,p_banned:true});r(`${u.nick} забанен`)}if(a==="unban"){await api("admin_ban",{p_token:sessionToken,p_target_id:u.id,p_banned:false});r(`${u.nick} разбанен`)}if(a==="del"){if(armed&&armed.k===k){await api("admin_delete",{p_token:sessionToken,p_target_id:u.id});armed=null;r(`Аккаунт ${u.nick} удалён`)}else{armed={k};r("Нажми ещё раз для подтверждения удаления");setTimeout(()=>{if(armed&&armed.k===k){armed=null;renderAdmin()}},4000)}}await loadAdmin()}catch(e){r(e.message||"Ошибка администратора")}};
@@ -392,7 +434,7 @@ const AV=["🦝","🐀","🦊","🐺","🦅","🐙","👾","🤠","🐱","🐶",
 const pkey=()=>"novadrop_prof_"+me;
 function prof(){try{return JSON.parse(localStorage.getItem(pkey()))||{}}catch(e){return{}}}
 function setProf(p){try{localStorage.setItem(pkey(),JSON.stringify(p))}catch(e){}}
-function bumpStat(c,w){api("nd_bump_open",{p_token:sessionToken}).catch(()=>{});const p=prof();p.open=(p.open||0)+1;setProf(p)}
+function bumpStat(c,w){const p=prof();p.open=(p.open||0)+1;setProf(p)}
 function lvl(o){let L=1,need=5;while(o>=need){o-=need;L++;need=5*L}return[L,o,need]}
 function avIn(p){return p.photo?`<img src="${p.photo}" alt="">`:(p.av||"👤")}
 function renderHav(){const b=$("hav");if(!b)return;const h=avIn(me?prof():{});if(b.dataset.h!==h){b.innerHTML=h;b.dataset.h=h}}
@@ -419,7 +461,7 @@ async function claim(){
  try{const r=await api("nd_claim",{p_token:sessionToken});
   if(r&&r.changed){
    if(!busy&&!dirty&&!saveBusy&&m0===mut){applyAccount(r);sel=[];tgt=null;render()}
-   else{bal=Math.max(0,bal+Number(r.dm||0));for(const it of r.items||[])inv.push(it);myv=Number(r.version);render()}
+   else{bal=Math.max(0,bal+Number(r.dm||0));for(const it of r.items||[])inv.push(it);for(const n of r.removed||[]){const j=inv.findIndex(x=>x[1]===n);if(j>=0)inv.splice(j,1)}sel=[];myv=Number(r.version);render()}
   }}catch(e){console.warn("claim",e)}
  claiming=false;
 }
@@ -532,6 +574,25 @@ $("atake").onclick=async()=>{
  if(me!=="admin")return;const k=target();if(!k)return;const n=Math.floor(+$("amoney").value);if(!(n>0))return $("ares").textContent="Введи сумму больше нуля";
  try{await api("nd_admin_take",{p_token:sessionToken,p_target_id:users[k].id,p_amount:n});$("ares").textContent=`Списано ${f(n)} ₽ у ${users[k].nick} (ID ${users[k].id})`;if(users[k].id===myId()){await flush();await claim()}await loadAdmin()}catch(e){$("ares").textContent=e.message||"Ошибка"}
 };
+$("atakei").onclick=async()=>{
+ if(me!=="admin")return;const k=target();if(!k)return;
+ const it=ALL.find(x=>x[1]===$("aitem").value),q=Math.min(100,Math.floor(+$("aqty").value));
+ if(!it||!(q>0))return $("ares").textContent="Выбери предмет и количество";
+ try{await api("nd_admin_take_item",{p_token:sessionToken,p_target_id:users[k].id,p_item:it,p_qty:q});
+  $("ares").textContent=`Забираем ${it[0]} ${it[1]} x${q} у ${users[k].nick} (ID ${users[k].id}). Снимется то, что у игрока есть.`;
+  if(users[k].id===myId()){await flush();await claim()}await loadAdmin()}catch(e){$("ares").textContent=e.message||"Ошибка"}
+};
+/* ===== сервер считает игру: сохранение с клиента отключено ===== */
+function scheduleSave(){}
+async function saveNow(){dirty=false}
+function syncFreeFrom(m){for(const k in(m||{}))fr[k]=Date.now()+Number(m[k])}
+async function syncFree(){try{syncFreeFrom(await api("g_free",{p_token:sessionToken}))}catch(e){}}
+async function sellIdx(ix){
+ if(busy||!ix.length)return;busy=true;render();
+ try{const r=await api("g_sell",{p_token:sessionToken,p_idx:ix,p_names:ix.map(i=>inv[i][1])});applyAccount(r);sel=[];tgt=null}
+ catch(e){svs(e.message||"Ошибка",true);$("res").textContent=e.message||"Ошибка";await check()}
+ busy=false;render();
+}
 setInterval(poll,1500);poll();
 setInterval(check,5000);document.addEventListener("visibilitychange",()=>{if(!document.hidden)check()});boot();
 </script>
