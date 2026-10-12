@@ -11,7 +11,33 @@
 <script>(function(){var t=null;try{t=localStorage.getItem("nd_theme")}catch(e){}
 if(t!=="light"&&t!=="dark")t=(window.matchMedia&&matchMedia("(prefers-color-scheme: light)").matches)?"light":"dark";
 document.documentElement.setAttribute("data-theme",t);var ac=null;try{ac=localStorage.getItem("nd_accent")}catch(e){}if(["green","yellow","red","blue","pink","purple"].indexOf(ac)>=0)document.documentElement.setAttribute("data-accent",ac);
-var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",t==="light"?"#edf2fa":"#0d1220")})();</script>
+var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",t==="light"?"#edf2fa":"#0d1220")})();
+/* Роли администраторов. Серверные RPC должны проверять права независимо от интерфейса. */
+async function loadStaffRoles(){
+ if(staffRole!=="main")return;
+ try{
+  const r=await api("nd_admin_roles_list",{p_token:sessionToken});
+  $("role-list").innerHTML=(r.roles||r||[]).map(x=>`<div class="hx"><span><b>${esc(x.nick||x.id)}</b> <small>${esc(x.role==="main"?"Главный администратор":x.role==="admin"?"Обычный администратор":"Пользователь")}</small></span><span>${esc(x.id||"")}</span></div>`).join("")||'<p class="empty">Дополнительных администраторов пока нет</p>';
+ }catch(e){$("role-list").innerHTML=`<p class="hint">Список ролей появится после установки SQL для ролей.</p>`}
+}
+document.addEventListener("DOMContentLoaded",()=>{
+ $("role-apply").onclick=async()=>{
+  if(staffRole!=="main"||me!=="admin")return;
+  const id=$("role-target").value.trim().toUpperCase(),role=$("role-kind").value;
+  if(!id)return $("role-result").textContent="Введи ID игрока";
+  const button=$("role-apply");button.disabled=true;
+  $("role-result").textContent="Сохраняю роль…";
+  try{
+   const result=await api("nd_admin_set_role",{p_token:sessionToken,p_target_id:id,p_role:role});
+   $("role-result").textContent=role==="main"?"Главный администратор назначен":role==="admin"?"Обычный администратор назначен":"Права администратора сняты";
+   await loadStaffRoles();await loadAdmin();
+  }catch(e){
+   console.error("nd_admin_set_role failed",e);
+   $("role-result").textContent=(e.message||String(e)||"Неизвестная ошибка")+". Проверь, что SQL для ролей выполнен в Supabase.";
+  }finally{button.disabled=false;}
+ };
+});
+</script>
 <style>
 :root{
 color-scheme:dark;
@@ -615,6 +641,21 @@ input:focus,select:focus{border-color:var(--accent)}
  <h2>Сейчас в сети: <span id="onn">0</span></h2>
  <div id="onl" class="hint"></div>
 </section>
+<section class="stage" id="role-manager">
+ <h2>👑 Управление администраторами</h2>
+ <p class="hint">Только корневой аккаунт admin может менять роли. Главный администратор получает полный доступ, обычный — только модерацию и объявления.</p>
+ <label for="role-target">ID игрока</label>
+ <input id="role-target" maxlength="5" placeholder="Например, A1B2C" autocomplete="off">
+ <label for="role-kind">Права</label>
+ <select id="role-kind">
+  <option value="main">Главный администратор — полный доступ</option>
+  <option value="admin">Обычный администратор — модерация и объявления</option>
+  <option value="user">Снять все права администратора</option>
+ </select>
+ <button id="role-apply">Применить</button>
+ <div class="result" id="role-result"></div>
+ <div id="role-list" style="margin-top:10px"></div>
+</section>
 <section class="stage">
  <h2>Наказания и объявления</h2>
  <p class="empty" style="margin-top:4px">Срок и причина берутся для кнопок «Забанить» и «Мут» в таблице ниже. Игроки увидят объявление в чате и сверху экрана.</p>
@@ -781,7 +822,7 @@ setInterval(()=>{if(me&&!$("t-cases").hidden)renderOpenBtn()},1000);
 const ALL=[...new Map(CASES.flatMap(c=>c.it).map(i=>[i[1],i])).values()];
 let bal=500,inv=[],busy=false,cur=0,sel=[],tgt=null,hold=false;
 const $=id=>document.getElementById(id);
-let users={},me=null,mode="login",mysess="",myv=0,ep=0,shown=new Set(),armed=null,lastAdmin="",sessionToken=localStorage.getItem("novadrop_session")||"",saveTimer=null,saveBusy=false,dirty=false,saveAgain=false,mut=0,upMode="item",upPct=0;
+let users={},me=null,staffRole="user",mode="login",mysess="",myv=0,ep=0,shown=new Set(),armed=null,lastAdmin="",sessionToken=localStorage.getItem("novadrop_session")||"",saveTimer=null,saveBusy=false,dirty=false,saveAgain=false,mut=0,upMode="item",upPct=0;
 const esc=t=>String(t).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 async function api(fn,body={},ka=false){
  const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`,{method:"POST",headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,"Content-Type":"application/json"},body:JSON.stringify(body),keepalive:ka});
@@ -804,9 +845,9 @@ async function saveNow(){
 document.addEventListener("visibilitychange",()=>{if(document.hidden&&dirty)saveNow()});
 addEventListener("pagehide",()=>{if(dirty&&me&&sessionToken)api("save_game",{p_token:sessionToken,p_balance:Math.min(2147483647,Math.max(0,Math.floor(bal))),p_inventory:inv},true).catch(()=>{})});
 function save(){scheduleSave()}
-function showTab(x){if(x==="admin"&&me!=="admin")x="cases";["cases","inv","up","rew","top","tx","chat","prof","admin","mines","prog","col","mk","fr"].forEach(t=>{$("t-"+t).hidden=t!==x});document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.tab===x));if(x==="admin")renderAdmin();if(x==="prof")renderProf();if(x==="top")loadTop();if(x==="tx")loadTx();if(x==="rew")loadRew();if(x==="chat")openChat();if(x==="mines")mineOpen();if(x==="prog")loadProg();if(x==="col")loadCol();if(x==="mk")loadMk();if(x==="fr")loadFr();if(x==="admin")loadPromos()}
+function showTab(x){if(x==="admin"&&!["main","admin"].includes(staffRole))x="cases";["cases","inv","up","rew","top","tx","chat","prof","admin","mines","prog","col","mk","fr"].forEach(t=>{$("t-"+t).hidden=t!==x});document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.tab===x));if(x==="admin"){renderAdmin();loadAdmin();if(staffRole==="main"){loadPromos();if(me==="admin")loadStaffRoles()}}if(x==="prof")renderProf();if(x==="top")loadTop();if(x==="tx")loadTx();if(x==="rew")loadRew();if(x==="chat")openChat();if(x==="mines")mineOpen();if(x==="prog")loadProg();if(x==="col")loadCol();if(x==="mk")loadMk();if(x==="fr")loadFr()}
 function applyAccount(a){users[me]={...users[me],...a};bal=Number(a.balance??a.bal??bal);inv=a.inventory??a.inv??inv;myv=Number(a.version??a.v??myv);mysess=a.session_id||mysess}
-function startApp(account){me=account.nick_key;ep++;resetFree();setTimeout(()=>{api("g_visit",{p_token:sessionToken}).then(syncFreeFrom).catch(()=>{})},0);dirty=false;saveAgain=false;clearTimeout(saveTimer);mysess=account.session_id||"";myv=Number(account.version||0);applyAccount(account);sel=[];tgt=null;busy=false;hold=false;localStorage.setItem("novadrop_nick",me);$("auth").hidden=true;$("app").hidden=false;$("res").textContent="";$("upres").textContent="";showTab("cases");render()}
+function startApp(account){me=account.nick_key;staffRole="user";ep++;resetFree();setTimeout(()=>{api("g_visit",{p_token:sessionToken}).then(syncFreeFrom).catch(()=>{})},0);dirty=false;saveAgain=false;clearTimeout(saveTimer);mysess=account.session_id||"";myv=Number(account.version||0);applyAccount(account);sel=[];tgt=null;busy=false;hold=false;localStorage.setItem("novadrop_nick",me);$("auth").hidden=true;$("app").hidden=false;$("res").textContent="";$("upres").textContent="";showTab("cases");render();(async()=>{try{const rr=await api("nd_admin_my_role",{p_token:sessionToken});const role=typeof rr==="string"?rr:(rr&&rr.role)||"user";staffRole=["main","admin"].includes(role)?role:"user";render();if(["main","admin"].includes(staffRole)){loadAdmin();if(staffRole==="main"){loadPromos();if(me==="admin")loadStaffRoles()}}}catch(e){staffRole="user";render()}})()}
 function setMode(m){mode=m;$("tl").classList.toggle("on",m==="login");$("tr").classList.toggle("on",m==="reg");$("asubmit").textContent=m==="login"?"Войти":"Зарегистрироваться";$("aerr").textContent="";$("apass").autocomplete=m==="login"?"current-password":"new-password";$("ahint").textContent="";$("apw2box").hidden=m!=="reg";$("apass2").value=""}
 async function submitAuth(){
  const nick=$("anick").value.trim(),pass=$("apass").value,err=t=>{$("aerr").textContent=t};
@@ -824,15 +865,15 @@ async function boot(){
 function forceOut(msg){me=null;ep++;busy=false;hold=false;sessionToken="";localStorage.removeItem("novadrop_session");$("app").hidden=true;$("auth").hidden=false;setMode("login");$("aerr").textContent=msg}
 async function check(){
  if(!sessionToken)return;
- try{const m0=mut;const r=await api("get_session_account",{p_token:sessionToken});if(!r?.account)return forceOut("Сессия завершена");const a=r.account;if(a.banned)return forceOut("Этот аккаунт заблокирован администратором");if(me&&a.nick_key!==me)return forceOut("Сессия больше не действительна");if(!busy&&!dirty&&!saveBusy&&m0===mut){const changed=Number(a.version||0)!==myv;applyAccount(a);if(changed){sel=[];tgt=null;render()}}if(me==="admin"&&!$("t-admin").hidden)await loadAdmin()}catch(e){console.warn("check",e)}
+ try{const m0=mut;const r=await api("get_session_account",{p_token:sessionToken});if(!r?.account)return forceOut("Сессия завершена");const a=r.account;if(a.banned)return forceOut("Этот аккаунт заблокирован администратором");if(me&&a.nick_key!==me)return forceOut("Сессия больше не действительна");if(!busy&&!dirty&&!saveBusy&&m0===mut){const changed=Number(a.version||0)!==myv;applyAccount(a);if(changed){sel=[];tgt=null;render()}}if(["main","admin"].includes(staffRole)&&!$("t-admin").hidden)await loadAdmin()}catch(e){console.warn("check",e)}
 }
-async function loadAdmin(){try{const r=await api("admin_list_accounts",{p_token:sessionToken});users={};for(const u of r.accounts||[])users[u.nick_key]=u;try{onl=await api("nd_online",{p_token:sessionToken})||[]}catch(e){onl=[]}try{flagMap=Object.fromEntries((await api("nd_admin_flags",{p_token:sessionToken})||[]).map(x=>[x.id,x]))}catch(e){flagMap={}}renderAdmin()}catch(e){console.warn("admin_list",e)}}
-function renderAdmin(){if(me!=="admin")return;onlineIds=new Set(onl.map(x=>x.id));$("onn").textContent=onl.length;$("onl").innerHTML=onl.length?onl.map(x=>`<span class="dot" style="margin:0 4px 0 10px"></span>${esc(x.nick)} <span style="font-family:monospace">${esc(x.id)}</span>`).join(""):"Никого нет";const ks=Object.keys(users).sort((a,b)=>a==="admin"?-1:b==="admin"?1:users[a].nick.toLowerCase().localeCompare(users[b].nick.toLowerCase()));const rows=ks.map(k=>{const u=users[k],ad=k==="admin",sh=shown.has(k),ar=armed&&armed.k===k,d=`data-k="${esc(k)}"`;return `<tr><td>${esc(u.nick)}</td><td><button class="lnk" data-a="id" ${d} title="Подставить в выдачу">${esc(u.id)}</button></td><td>${statCell(u)}</td><td>••••••••</td><td><div class="ab">${ad?"":`<button data-a="kick" ${d}>Кикнуть</button><button data-a="ban" ${d} ${u.banned?"disabled":""}>Забанить</button><button class="ghost" data-a="unban" ${d} ${u.banned?"":"disabled"}>Разбанить</button><button data-a="mute" ${d}>Мут</button><button class="ghost" data-a="unmute" ${d}>Снять мут</button><button class="danger" data-a="del" ${d}>${ar?"Точно удалить?":"Удалить аккаунт"}</button>`}</div></td></tr>`}).join("");const h=`<thead><tr><th>Никнейм</th><th>ID</th><th>Статус</th><th>Пароль</th><th>Действия</th></tr></thead><tbody>${rows}</tbody>`;if(h!==lastAdmin){$("utab").innerHTML=h;lastAdmin=h}}
+async function loadAdmin(){if(!["main","admin"].includes(staffRole))return;try{const r=await api("nd_moderator_list_accounts",{p_token:sessionToken});users={};for(const u of r.accounts||[])users[u.nick_key]=u;flagMap=Object.fromEntries((r.accounts||[]).map(x=>[x.id,x]));try{onl=staffRole==="main"?(await api("nd_online",{p_token:sessionToken})||[]):[]}catch(e){onl=[]}if(staffRole==="main"){try{flagMap=Object.fromEntries((await api("nd_admin_flags",{p_token:sessionToken})||[]).map(x=>[x.id,x]))}catch(e){}}renderAdmin()}catch(e){console.warn("admin_list",e)}}
+function renderAdmin(){if(!["main","admin"].includes(staffRole))return; const adminSections=[...document.querySelectorAll("#t-admin > section")]; adminSections.forEach((sec,i)=>{sec.hidden=staffRole==="admin"&&[0,1,3,5].includes(i);}); $("role-manager").hidden=staffRole!=="main"||me!=="admin"; onlineIds=new Set(onl.map(x=>x.id));$("onn").textContent=onl.length;$("onl").innerHTML=onl.length?onl.map(x=>`<span class="dot" style="margin:0 4px 0 10px"></span>${esc(x.nick)} <span style="font-family:monospace">${esc(x.id)}</span>`).join(""):"Никого нет";const ks=Object.keys(users).sort((a,b)=>a==="admin"?-1:b==="admin"?1:users[a].nick.toLowerCase().localeCompare(users[b].nick.toLowerCase()));const rows=ks.map(k=>{const u=users[k],ad=k==="admin",ar=armed&&armed.k===k,d=`data-k="${esc(k)}"`;let actions="";if(!ad){actions=`<button data-a="ban" ${d} ${u.banned?"disabled":""}>Забанить</button><button class="ghost" data-a="unban" ${d} ${u.banned?"":"disabled"}>Разбанить</button><button data-a="mute" ${d}>Мут</button><button class="ghost" data-a="unmute" ${d}>Снять мут</button>`;if(staffRole==="main")actions=`<button data-a="kick" ${d}>Кикнуть</button>${actions}<button class="danger" data-a="del" ${d}>${ar?"Точно удалить?":"Удалить аккаунт"}</button>`;}return `<tr><td>${esc(u.nick)}</td><td>${staffRole==="main"?`<button class="lnk" data-a="id" ${d} title="Подставить в выдачу">${esc(u.id)}</button>`:esc(u.id)}</td><td>${statCell(u)}</td><td>••••••••</td><td><div class="ab">${actions}</div></td></tr>`}).join("");const h=`<thead><tr><th>Никнейм</th><th>ID</th><th>Статус</th><th>Пароль</th><th>Действия</th></tr></thead><tbody>${rows}</tbody>`;if(h!==lastAdmin){$("utab").innerHTML=h;lastAdmin=h}}
 function pick(c){let x=Math.random()*c.w.reduce((a,b)=>a+b,0),t=0;for(;t<4;t++){x-=c.w[t];if(x<0)break}const pool=c.it.filter(i=>i[2]===TIERS[t]);return pool[Math.floor(Math.random()*pool.length)]}
 function card(i){return `<div class="card" style="--c:${R[i[2]].c}"><div class="e">${i[0]}</div><div class="n">${i[1]}</div></div>`}
 const f=n=>Number(n).toLocaleString("ru");
 function chance(sum,b){return Math.min(75,Math.max(1,Math.round(sum/b[3]*95)))}
-function render(){const c=CASES[cur];$("bal").textContent=f(bal);renderHav();$("navadmin").hidden=me!=="admin";$("navinv").textContent="Твой хлам ("+inv.length+")";$("navup").textContent="Апгрейдер"+(sel.length?" ("+sel.length+")":"");$("cases").innerHTML=CASES.map((k,i)=>`<button class="cs ${i===cur?"on":""}" data-c="${i}" ${busy?"disabled":""}><span class="e">${k.e}</span>${k.n}<small>${k.free?"Бесплатно":f(k.p)+" ₽"}</small></button>`).join("");$("cic").textContent=c.e;$("cname").textContent=c.n;$("cdesc").textContent=c.d;$("drops").innerHTML=c.it.map(i=>{const t=TIERS.indexOf(i[2]),k=c.it.filter(x=>x[2]===i[2]).length,pc=c.w[t]/k;return `<div style="--c:${R[i[2]].c}"><div style="font-size:26px">${i[0]}</div>${i[1]}<br>${i[3]} ₽<br><b>${+pc.toFixed(1)}%</b></div>`}).join("");$("chance").innerHTML=TIERS.map((t,i)=>`<span style="--c:${R[t].c}">${R[t].n} ${c.w[i]}%</span>`).join("");renderOpenBtn();$("sellall").disabled=!inv.length||busy;$("empty").style.display=inv.length?"none":"block";renderInv();$("upinv").innerHTML=inv.length?inv.map((i,idx)=>`<div class="card" data-u="${idx}" style="--c:${R[i[2]].c};${sel.includes(idx)?"outline:2px solid var(--hazard)":""}"><div class="e">${i[0]}</div><div class="n">${i[3]} ₽</div></div>`).join(""):`<p class="empty">Хлама нет. Открой кейс.</p>`;const items=sel.map(i=>inv[i]).filter(Boolean),sum=items.reduce((a,i)=>a+i[3],0),pm=upMode==="pct";const tl=items.length&&!pm?ALL.filter(t=>t[3]>=sum&&t[3]<=sum*20).sort((a,b)=>a[3]-b[3]).slice(0,10):[];if(tgt&&!tl.some(t=>t[1]===tgt))tgt=null;const tobj=ALL.find(x=>x[1]===tgt),ch=pm?upPct:(tobj?chance(sum,tobj):0),ready=items.length&&ch;
+function render(){const c=CASES[cur];$("bal").textContent=f(bal);renderHav();$("navadmin").hidden=!["main","admin"].includes(staffRole);$("navinv").textContent="Твой хлам ("+inv.length+")";$("navup").textContent="Апгрейдер"+(sel.length?" ("+sel.length+")":"");$("cases").innerHTML=CASES.map((k,i)=>`<button class="cs ${i===cur?"on":""}" data-c="${i}" ${busy?"disabled":""}><span class="e">${k.e}</span>${k.n}<small>${k.free?"Бесплатно":f(k.p)+" ₽"}</small></button>`).join("");$("cic").textContent=c.e;$("cname").textContent=c.n;$("cdesc").textContent=c.d;$("drops").innerHTML=c.it.map(i=>{const t=TIERS.indexOf(i[2]),k=c.it.filter(x=>x[2]===i[2]).length,pc=c.w[t]/k;return `<div style="--c:${R[i[2]].c}"><div style="font-size:26px">${i[0]}</div>${i[1]}<br>${i[3]} ₽<br><b>${+pc.toFixed(1)}%</b></div>`}).join("");$("chance").innerHTML=TIERS.map((t,i)=>`<span style="--c:${R[t].c}">${R[t].n} ${c.w[i]}%</span>`).join("");renderOpenBtn();$("sellall").disabled=!inv.length||busy;$("empty").style.display=inv.length?"none":"block";renderInv();$("upinv").innerHTML=inv.length?inv.map((i,idx)=>`<div class="card" data-u="${idx}" style="--c:${R[i[2]].c};${sel.includes(idx)?"outline:2px solid var(--hazard)":""}"><div class="e">${i[0]}</div><div class="n">${i[3]} ₽</div></div>`).join(""):`<p class="empty">Хлама нет. Открой кейс.</p>`;const items=sel.map(i=>inv[i]).filter(Boolean),sum=items.reduce((a,i)=>a+i[3],0),pm=upMode==="pct";const tl=items.length&&!pm?ALL.filter(t=>t[3]>=sum&&t[3]<=sum*20).sort((a,b)=>a[3]-b[3]).slice(0,10):[];if(tgt&&!tl.some(t=>t[1]===tgt))tgt=null;const tobj=ALL.find(x=>x[1]===tgt),ch=pm?upPct:(tobj?chance(sum,tobj):0),ready=items.length&&ch;
 $("umode").innerHTML=`<button class="${pm?"ghost":""}" data-m="item">Выбрать предмет</button><button class="${pm?"":"ghost"}" data-m="pct">Выбрать шанс</button>`;
 $("upsel").innerHTML=items.length?`<div class="sg">${sel.map(i=>`<div class="card" data-r="${i}" title="Убрать" style="--c:${R[inv[i][2]].c}"><div class="e">${inv[i][0]}</div><div class="n">${inv[i][3]} ₽</div></div>`).join("")}</div><p class="n" style="text-align:center">Предметов ${items.length} из 5, сумма ${f(sum)} ₽</p>`:`<p class="empty">Предметы не выбраны</p>`;
 $("tg").innerHTML=!items.length?"":pm?[75,55,22].map(p=>`<button class="card ${p===upPct?"pick":""}" data-p="${p}" style="--c:var(--hazard)"><div class="num" style="font-size:26px;color:var(--hazard)">${p}%</div><div class="n">Приз около ${f(Math.round(sum*95/p))} ₽</div></button>`).join(""):tl.map(t=>`<button class="card ${t[1]===tgt?"pick":""}" data-t="${t[1]}" style="--c:${R[t[2]].c}"><div class="e">${t[0]}</div><div class="n">${t[1]}</div><div class="n">${f(t[3])} ₽</div><div class="num" style="color:var(--hazard)">${chance(sum,t)}%</div></button>`).join("")||`<p class="empty">Для такой суммы нет целей</p>`;
@@ -866,7 +907,7 @@ $("upgo").onclick=async()=>{
   render();setTimeout(()=>{hold=false;render()},1800)},4300)};
 $("nav").onclick=e=>{const b=e.target.closest("[data-tab]");if(b)showTab(b.dataset.tab)};$("tl").onclick=()=>setMode("login");$("tr").onclick=()=>setMode("reg");$("asubmit").onclick=submitAuth;["anick","apass","apass2"].forEach(id=>$(id).addEventListener("keydown",e=>{if(e.key==="Enter")submitAuth()}));
 $("logout").onclick=async()=>{if(busy)return;await saveNow();for(let k=0;saveBusy&&k<50;k++)await new Promise(r=>setTimeout(r,100));try{await api("logout_account",{p_token:sessionToken})}catch(e){}sessionToken="";localStorage.removeItem("novadrop_session");me=null;ep++;$("app").hidden=true;$("auth").hidden=false;setMode("login")};
-$("utab").onclick=async e=>{const b=e.target.closest("[data-a]");if(!b||me!=="admin")return;const k=b.dataset.k,a=b.dataset.a,u=users[k];if(!u)return;const r=t=>{$("tres").textContent=t};if(a==="id"){$("aid").value=u.id;r(`ID ${u.id} подставлен в выдачу`);return}try{if(a==="kick"){await api("admin_kick",{p_token:sessionToken,p_target_id:u.id});r(`${u.nick} выкинут из аккаунта`)}if(a==="ban"||a==="mute"){const h=+$("pterm").value,why=$("preason").value.trim();if(!why){r("Укажи причину в блоке «Наказания и объявления»");return}
+$("utab").onclick=async e=>{const b=e.target.closest("[data-a]");if(!b||!["main","admin"].includes(staffRole))return;const k=b.dataset.k,a=b.dataset.a,u=users[k];if(staffRole==="admin"&&!["id","ban","mute","unban","unmute"].includes(a))return;if(!u)return;const r=t=>{$("tres").textContent=t};if(a==="id"){$("aid").value=u.id;r(`ID ${u.id} подставлен в выдачу`);return}try{if(a==="kick"){await api("admin_kick",{p_token:sessionToken,p_target_id:u.id});r(`${u.nick} выкинут из аккаунта`)}if(a==="ban"||a==="mute"){const h=+$("pterm").value,why=$("preason").value.trim();if(!why){r("Укажи причину в блоке «Наказания и объявления»");return}
 if(a==="ban"){await api("nd_admin_ban",{p_token:sessionToken,p_target_id:u.id,p_hours:h>0?h:null,p_reason:why});r(`${u.nick} забанен`)}else{await api("nd_admin_mute",{p_token:sessionToken,p_target_id:u.id,p_minutes:h>0?h*60:525600,p_reason:why});r(`${u.nick} замучен`)}}
 if(a==="unban"){await api("nd_admin_unban",{p_token:sessionToken,p_target_id:u.id});r(`${u.nick} разбанен`)}
 if(a==="unmute"){await api("nd_admin_unmute",{p_token:sessionToken,p_target_id:u.id});r(`С ${u.nick} снят мут`)}if(a==="del"){if(armed&&armed.k===k){await api("admin_delete",{p_token:sessionToken,p_target_id:u.id});armed=null;r(`Аккаунт ${u.nick} удалён`)}else{armed={k};r("Нажми ещё раз для подтверждения удаления");setTimeout(()=>{if(armed&&armed.k===k){armed=null;renderAdmin()}},4000)}}await loadAdmin()}catch(e){r(e.message||"Ошибка администратора")}};
@@ -1189,7 +1230,7 @@ function statCell(u){
  return h;
 }
 $("annsend").onclick=async()=>{
- if(me!=="admin")return;
+ if(!["main","admin"].includes(staffRole))return;
  try{await api("nd_admin_announce",{p_token:sessionToken,p_text:$("anntext").value});$("anntext").value="";$("annres").textContent="Объявление отправлено"}catch(e){$("annres").textContent=e.message||"Ошибка"}
 };
 async function loadPromos(){if(me!=="admin")return;try{promos=await api("nd_admin_promo_list",{p_token:sessionToken})||[];renderPromos()}catch(e){}}
