@@ -820,7 +820,7 @@ function renderOpenBtn(){
 }
 setInterval(()=>{if(me&&!$("t-cases").hidden)renderOpenBtn()},1000);
 const ALL=[...new Map(CASES.flatMap(c=>c.it).map(i=>[i[1],i])).values()];
-let bal=500,inv=[],busy=false,cur=0,sel=[],tgt=null,hold=false;
+const MAXB=999999999999;let bal=500,inv=[],busy=false,cur=0,sel=[],tgt=null,hold=false;
 const $=id=>document.getElementById(id);
 let users={},me=null,staffRole="user",mode="login",mysess="",myv=0,ep=0,shown=new Set(),armed=null,lastAdmin="",sessionToken=localStorage.getItem("novadrop_session")||"",saveTimer=null,saveBusy=false,dirty=false,saveAgain=false,mut=0,upMode="item",upPct=0;
 const esc=t=>String(t).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -836,14 +836,14 @@ async function saveNow(){
  if(!me||!sessionToken)return;
  if(saveBusy){saveAgain=true;return}
  clearTimeout(saveTimer);saveBusy=true;dirty=false;saveAgain=false;
- try{svs("Сохраняю…");const sl=inv.length,sb=Math.min(2147483647,Math.max(0,Math.floor(bal)));const r=await api("save_game",{p_token:sessionToken,p_balance:sb,p_inventory:inv});const sv=Array.isArray(r?.inventory)?r.inventory.length:sl;if(sv!==sl||(r?.balance!==undefined&&Number(r.balance)!==sb))svs("⚠ Сервер не принял сохранение: предметов "+sl+" → "+sv+", баланс "+sb+" → "+r?.balance,true);else svs("Сохранено ✓");
+ try{svs("Сохраняю…");const sl=inv.length,sb=Math.min(MAXB,Math.max(0,Math.floor(bal)));const r=await api("save_game",{p_token:sessionToken,p_balance:sb,p_inventory:inv});const sv=Array.isArray(r?.inventory)?r.inventory.length:sl;if(sv!==sl||(r?.balance!==undefined&&Number(r.balance)!==sb))svs("⚠ Сервер не принял сохранение: предметов "+sl+" → "+sv+", баланс "+sb+" → "+r?.balance,true);else svs("Сохранено ✓");
   if(r?.version!==undefined)myv=Number(r.version);
   if(!dirty&&!saveAgain&&r?.balance!==undefined){bal=Number(r.balance);inv=r.inventory||inv}}
  catch(e){console.warn("save_game",e);svs("⚠ Ошибка сохранения: "+(e.message||e),true);dirty=true;clearTimeout(saveTimer);saveTimer=setTimeout(saveNow,3000)}
  finally{saveBusy=false;mut++;if(saveAgain){saveAgain=false;saveNow()}}
 }
 document.addEventListener("visibilitychange",()=>{if(document.hidden&&dirty)saveNow()});
-addEventListener("pagehide",()=>{if(dirty&&me&&sessionToken)api("save_game",{p_token:sessionToken,p_balance:Math.min(2147483647,Math.max(0,Math.floor(bal))),p_inventory:inv},true).catch(()=>{})});
+addEventListener("pagehide",()=>{if(dirty&&me&&sessionToken)api("save_game",{p_token:sessionToken,p_balance:Math.min(MAXB,Math.max(0,Math.floor(bal))),p_inventory:inv},true).catch(()=>{})});
 function save(){scheduleSave()}
 function showTab(x){if(x==="admin"&&!["main","admin"].includes(staffRole))x="cases";["cases","inv","up","rew","top","tx","chat","prof","admin","mines","prog","col","mk","fr"].forEach(t=>{$("t-"+t).hidden=t!==x});document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.tab===x));if(x==="admin"){renderAdmin();loadAdmin();if(staffRole==="main"){loadPromos();if(me==="admin")loadStaffRoles()}}if(x==="prof")renderProf();if(x==="top")loadTop();if(x==="tx")loadTx();if(x==="rew")loadRew();if(x==="chat")openChat();if(x==="mines")mineOpen();if(x==="prog")loadProg();if(x==="col")loadCol();if(x==="mk")loadMk();if(x==="fr")loadFr()}
 function applyAccount(a){users[me]={...users[me],...a};bal=Number(a.balance??a.bal??bal);inv=a.inventory??a.inv??inv;myv=Number(a.version??a.v??myv);mysess=a.session_id||mysess}
@@ -965,7 +965,7 @@ async function claim(){
  try{const r=await api("nd_claim",{p_token:sessionToken});
   if(r&&r.changed){
    if(!busy&&!dirty&&!saveBusy&&m0===mut){applyAccount(r);sel=[];tgt=null;render()}
-   else{bal=Math.max(0,bal+Number(r.dm||0));for(const it of r.items||[])inv.push(it);for(const n of r.removed||[]){const j=inv.findIndex(x=>x[1]===n);if(j>=0)inv.splice(j,1)}sel=[];myv=Number(r.version);render()}
+   else{bal=Math.min(MAXB,Math.max(0,bal+Number(r.dm||0)));for(const it of r.items||[])inv.push(it);for(const n of r.removed||[]){const j=inv.findIndex(x=>x[1]===n);if(j>=0)inv.splice(j,1)}sel=[];myv=Number(r.version);render()}
   }}catch(e){console.warn("claim",e)}
  claiming=false;
 }
