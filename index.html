@@ -492,6 +492,14 @@ input:focus,select:focus{border-color:var(--accent)}
 .fi.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--panel2))}
 .fi:disabled{opacity:1;cursor:default}.fi:disabled .fv{opacity:.45;filter:saturate(.55)}
 .pubhead{display:flex;align-items:center;gap:14px;text-align:left;margin-bottom:8px}.pubhead .av{width:72px;height:72px;font-size:40px}.pubhead .pubmeta{min-width:0;flex:1}
+
+/* титулы администрации */
+.nd-title.st-owner{--tc:#ffc83a;background:linear-gradient(110deg,#ff9d00,#ffe27a,#ff9d00);background-size:220% 100%;color:#2a1700;text-shadow:none;border-color:#ffe27a;animation:ndShimmer 3.2s linear infinite;box-shadow:0 0 18px #ffb00099}
+.nd-title.st-main{--tc:#ff5a52;background:linear-gradient(110deg,#e8233a,#ff7a3d);color:#fff;text-shadow:0 1px 2px #0006;border-color:#ff9a7a;box-shadow:0 0 14px #ff4a4a66}
+.nd-title.st-admin{--tc:#4da3ff;background:linear-gradient(110deg,#2a6bff,#3fd2ff);color:#02142e;text-shadow:none;border-color:#9fe3ff;box-shadow:0 0 14px #2a8bff66}
+.nd-title.st-owner,.nd-title.st-main,.nd-title.st-admin{white-space:normal!important;text-align:center;line-height:1.15;padding:5px 11px;flex-wrap:wrap}
+.nd-title.st-owner:before,.nd-title.st-owner:after,.nd-title.st-main:before,.nd-title.st-main:after,.nd-title.st-admin:before,.nd-title.st-admin:after{content:none}
+@keyframes ndShimmer{to{background-position:-220% 0}}
 @media (prefers-reduced-motion:reduce){.strip,.needle{transition-duration:.01s!important}.result b{animation:none}}
 
 
@@ -637,7 +645,7 @@ input:focus,select:focus{border-color:var(--accent)}
 <div class="tab" id="t-chat" hidden><section class="stage"><h2>Чат</h2><div class="chatf" id="chatf"></div><div class="hint" id="chmute" style="color:var(--warn);margin-top:6px"></div><div class="chrow"><input id="chin" maxlength="200" placeholder="Сообщение (до 200 символов)" autocomplete="off"><button id="chsend">Отправить</button></div><div class="result" id="chres"></div></section></div>
 <div class="tab" id="t-prof" hidden><section class="stage"><div id="pf"></div><p style="margin-top:14px"><button class="ghost" id="logout">Выйти из аккаунта</button></p></section></div>
 <div class="tab" id="t-admin" hidden>
-<section class="stage">
+<section class="stage" id="sec-online">
  <h2>Сейчас в сети: <span id="onn">0</span></h2>
  <div id="onl" class="hint"></div>
 </section>
@@ -656,7 +664,7 @@ input:focus,select:focus{border-color:var(--accent)}
  <div class="result" id="role-result"></div>
  <div id="role-list" style="margin-top:10px"></div>
 </section>
-<section class="stage">
+<section class="stage" id="sec-punish">
  <h2>Наказания и объявления</h2>
  <p class="empty" style="margin-top:4px">Срок и причина берутся для кнопок «Забанить» и «Мут» в таблице ниже. Игроки увидят объявление в чате и сверху экрана.</p>
  <label for="pterm">Срок</label><select id="pterm"><option value="1">1 час</option><option value="6">6 часов</option><option value="24" selected>1 день</option><option value="72">3 дня</option><option value="168">7 дней</option><option value="720">30 дней</option><option value="0">Навсегда</option></select>
@@ -664,7 +672,7 @@ input:focus,select:focus{border-color:var(--accent)}
  <label for="anntext">Объявление всем игрокам</label><input id="anntext" maxlength="300" placeholder="Текст объявления" autocomplete="off"><button id="annsend">Отправить объявление</button>
  <div class="result" id="annres"></div>
 </section>
-<section class="stage">
+<section class="stage" id="sec-promo">
  <h2>Промокоды</h2>
  <label for="pcode">Код (буквы и цифры, можно по-русски)</label><input id="pcode" maxlength="20" autocomplete="off">
  <label for="pmoney">Деньги, ₽</label><input id="pmoney" type="number" min="0" placeholder="0">
@@ -675,12 +683,12 @@ input:focus,select:focus{border-color:var(--accent)}
  <label for="phours">Действует часов (0 = без срока)</label><input id="phours" type="number" min="0" value="0">
  <button id="pcreate">Создать промокод</button><div class="result" id="pres"></div><div id="plist" style="margin-top:10px"></div>
 </section>
-<section class="stage">
+<section class="stage" id="sec-users">
  <h2>Зарегистрированные пользователи</h2>
  <div class="tw"><table class="ut" id="utab"></table></div>
  <div class="result" id="tres"></div>
 </section>
-<section class="stage">
+<section class="stage" id="sec-give">
  <h2>Выдача по ID</h2>
  <p class="empty" style="margin-top:4px">Введи ID игрока (клик по ID в таблице подставит его). Твой ID: 00000.</p>
  <label for="aid">ID игрока</label>
@@ -836,14 +844,12 @@ async function saveNow(){
  if(!me||!sessionToken)return;
  if(saveBusy){saveAgain=true;return}
  clearTimeout(saveTimer);saveBusy=true;dirty=false;saveAgain=false;
- try{svs("Сохраняю…");const sl=inv.length,sb=Math.min(MAXB,Math.max(0,Math.floor(bal)));const r=await api("save_game",{p_token:sessionToken,p_balance:sb,p_inventory:inv});const sv=Array.isArray(r?.inventory)?r.inventory.length:sl;if(sv!==sl||(r?.balance!==undefined&&Number(r.balance)!==sb))svs("⚠ Сервер не принял сохранение: предметов "+sl+" → "+sv+", баланс "+sb+" → "+r?.balance,true);else svs("Сохранено ✓");
-  if(r?.version!==undefined)myv=Number(r.version);
-  if(!dirty&&!saveAgain&&r?.balance!==undefined){bal=Number(r.balance);inv=r.inventory||inv}}
+ try{svs("Сохраняю…");const sl=inv.length,sb=Math.min(MAXB,Math.max(0,Math.floor(bal)));const r=await api("save_game",{p_token:sessionToken,p_balance:sb,p_inventory:inv,p_version:myv});if(r?.conflict){bal=Number(r.balance??bal);inv=Array.isArray(r.inventory)?r.inventory:inv;myv=Number(r.version??myv);dirty=false;saveAgain=false;svs("Состояние обновлено с сервера — конфликт сохранения предотвращён",true);sel=[];tgt=null;render()}else{if(r?.version!==undefined)myv=Number(r.version);if(!dirty&&!saveAgain&&r?.balance!==undefined){bal=Number(r.balance);inv=r.inventory||inv}svs("Сохранено ✓")}}
  catch(e){console.warn("save_game",e);svs("⚠ Ошибка сохранения: "+(e.message||e),true);dirty=true;clearTimeout(saveTimer);saveTimer=setTimeout(saveNow,3000)}
  finally{saveBusy=false;mut++;if(saveAgain){saveAgain=false;saveNow()}}
 }
 document.addEventListener("visibilitychange",()=>{if(document.hidden&&dirty)saveNow()});
-addEventListener("pagehide",()=>{if(dirty&&me&&sessionToken)api("save_game",{p_token:sessionToken,p_balance:Math.min(MAXB,Math.max(0,Math.floor(bal))),p_inventory:inv},true).catch(()=>{})});
+addEventListener("pagehide",()=>{if(dirty&&me&&sessionToken)api("save_game",{p_token:sessionToken,p_balance:Math.min(MAXB,Math.max(0,Math.floor(bal))),p_inventory:inv,p_version:myv},true).catch(()=>{})});
 function save(){scheduleSave()}
 function showTab(x){if(x==="admin"&&!["main","admin"].includes(staffRole))x="cases";["cases","inv","up","rew","top","tx","chat","prof","admin","mines","prog","col","mk","fr"].forEach(t=>{$("t-"+t).hidden=t!==x});document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.tab===x));if(x==="admin"){renderAdmin();loadAdmin();if(staffRole==="main"){loadPromos();if(me==="admin")loadStaffRoles()}}if(x==="prof")renderProf();if(x==="top")loadTop();if(x==="tx")loadTx();if(x==="rew")loadRew();if(x==="chat")openChat();if(x==="mines")mineOpen();if(x==="prog")loadProg();if(x==="col")loadCol();if(x==="mk")loadMk();if(x==="fr")loadFr()}
 function applyAccount(a){users[me]={...users[me],...a};bal=Number(a.balance??a.bal??bal);inv=a.inventory??a.inv??inv;myv=Number(a.version??a.v??myv);mysess=a.session_id||mysess}
@@ -868,7 +874,7 @@ async function check(){
  try{const m0=mut;const r=await api("get_session_account",{p_token:sessionToken});if(!r?.account)return forceOut("Сессия завершена");const a=r.account;if(a.banned)return forceOut("Этот аккаунт заблокирован администратором");if(me&&a.nick_key!==me)return forceOut("Сессия больше не действительна");if(!busy&&!dirty&&!saveBusy&&m0===mut){const changed=Number(a.version||0)!==myv;applyAccount(a);if(changed){sel=[];tgt=null;render()}}if(["main","admin"].includes(staffRole)&&!$("t-admin").hidden)await loadAdmin()}catch(e){console.warn("check",e)}
 }
 async function loadAdmin(){if(!["main","admin"].includes(staffRole))return;try{const r=await api("nd_moderator_list_accounts",{p_token:sessionToken});users={};for(const u of r.accounts||[])users[u.nick_key]=u;flagMap=Object.fromEntries((r.accounts||[]).map(x=>[x.id,x]));try{onl=staffRole==="main"?(await api("nd_online",{p_token:sessionToken})||[]):[]}catch(e){onl=[]}if(staffRole==="main"){try{flagMap=Object.fromEntries((await api("nd_admin_flags",{p_token:sessionToken})||[]).map(x=>[x.id,x]))}catch(e){}}renderAdmin()}catch(e){console.warn("admin_list",e)}}
-function renderAdmin(){if(!["main","admin"].includes(staffRole))return; const adminSections=[...document.querySelectorAll("#t-admin > section")]; adminSections.forEach((sec,i)=>{sec.hidden=staffRole==="admin"&&[0,1,3,5].includes(i);}); $("role-manager").hidden=staffRole!=="main"||me!=="admin"; onlineIds=new Set(onl.map(x=>x.id));$("onn").textContent=onl.length;$("onl").innerHTML=onl.length?onl.map(x=>`<span class="dot" style="margin:0 4px 0 10px"></span>${esc(x.nick)} <span style="font-family:monospace">${esc(x.id)}</span>`).join(""):"Никого нет";const ks=Object.keys(users).sort((a,b)=>a==="admin"?-1:b==="admin"?1:users[a].nick.toLowerCase().localeCompare(users[b].nick.toLowerCase()));const rows=ks.map(k=>{const u=users[k],ad=k==="admin",ar=armed&&armed.k===k,d=`data-k="${esc(k)}"`;let actions="";if(!ad){actions=`<button data-a="ban" ${d} ${u.banned?"disabled":""}>Забанить</button><button class="ghost" data-a="unban" ${d} ${u.banned?"":"disabled"}>Разбанить</button><button data-a="mute" ${d}>Мут</button><button class="ghost" data-a="unmute" ${d}>Снять мут</button>`;if(staffRole==="main")actions=`<button data-a="kick" ${d}>Кикнуть</button>${actions}<button class="danger" data-a="del" ${d}>${ar?"Точно удалить?":"Удалить аккаунт"}</button>`;}return `<tr><td>${esc(u.nick)}</td><td>${staffRole==="main"?`<button class="lnk" data-a="id" ${d} title="Подставить в выдачу">${esc(u.id)}</button>`:esc(u.id)}</td><td>${statCell(u)}</td><td>••••••••</td><td><div class="ab">${actions}</div></td></tr>`}).join("");const h=`<thead><tr><th>Никнейм</th><th>ID</th><th>Статус</th><th>Пароль</th><th>Действия</th></tr></thead><tbody>${rows}</tbody>`;if(h!==lastAdmin){$("utab").innerHTML=h;lastAdmin=h}}
+function renderAdmin(){if(!["main","admin"].includes(staffRole))return; const adminSections=[...document.querySelectorAll("#t-admin > section")]; adminSections.forEach(sec=>{sec.hidden=staffRole==="admin"&&["sec-online","role-manager","sec-promo","sec-give"].includes(sec.id);}); $("role-manager").hidden=staffRole!=="main"||me!=="admin"; onlineIds=new Set(onl.map(x=>x.id));$("onn").textContent=onl.length;$("onl").innerHTML=onl.length?onl.map(x=>`<span class="dot" style="margin:0 4px 0 10px"></span>${esc(x.nick)} <span style="font-family:monospace">${esc(x.id)}</span>`).join(""):"Никого нет";const ks=Object.keys(users).sort((a,b)=>a==="admin"?-1:b==="admin"?1:users[a].nick.toLowerCase().localeCompare(users[b].nick.toLowerCase()));const rows=ks.map(k=>{const u=users[k],ad=k==="admin",ar=armed&&armed.k===k,d=`data-k="${esc(k)}"`;let actions="";if(!ad){actions=`<button data-a="ban" ${d} ${u.banned?"disabled":""}>Забанить</button><button class="ghost" data-a="unban" ${d} ${u.banned?"":"disabled"}>Разбанить</button><button data-a="mute" ${d}>Мут</button><button class="ghost" data-a="unmute" ${d}>Снять мут</button>`;if(staffRole==="main")actions=`<button data-a="kick" ${d}>Кикнуть</button>${actions}<button class="danger" data-a="del" ${d}>${ar?"Точно удалить?":"Удалить аккаунт"}</button>`;}return `<tr><td>${esc(u.nick)}</td><td>${staffRole==="main"?`<button class="lnk" data-a="id" ${d} title="Подставить в выдачу">${esc(u.id)}</button>`:esc(u.id)}</td><td>${statCell(u)}</td><td>••••••••</td><td><div class="ab">${actions}</div></td></tr>`}).join("");const h=`<thead><tr><th>Никнейм</th><th>ID</th><th>Статус</th><th>Пароль</th><th>Действия</th></tr></thead><tbody>${rows}</tbody>`;if(h!==lastAdmin){$("utab").innerHTML=h;lastAdmin=h}}
 function pick(c){let x=Math.random()*c.w.reduce((a,b)=>a+b,0),t=0;for(;t<4;t++){x-=c.w[t];if(x<0)break}const pool=c.it.filter(i=>i[2]===TIERS[t]);return pool[Math.floor(Math.random()*pool.length)]}
 function card(i){return `<div class="card" style="--c:${R[i[2]].c}"><div class="e">${i[0]}</div><div class="n">${i[1]}</div></div>`}
 const f=n=>Number(n).toLocaleString("ru");
@@ -913,13 +919,13 @@ if(a==="unban"){await api("nd_admin_unban",{p_token:sessionToken,p_target_id:u.i
 if(a==="unmute"){await api("nd_admin_unmute",{p_token:sessionToken,p_target_id:u.id});r(`С ${u.nick} снят мут`)}if(a==="del"){if(armed&&armed.k===k){await api("admin_delete",{p_token:sessionToken,p_target_id:u.id});armed=null;r(`Аккаунт ${u.nick} удалён`)}else{armed={k};r("Нажми ещё раз для подтверждения удаления");setTimeout(()=>{if(armed&&armed.k===k){armed=null;renderAdmin()}},4000)}}await loadAdmin()}catch(e){r(e.message||"Ошибка администратора")}};
 function target(){const id=$("aid").value.trim().toUpperCase();if(id.length!==5){$("ares").textContent="ID должен состоять из 5 символов";return null}const k=Object.keys(users).find(x=>users[x].id===id);if(!k)$("ares").textContent="Игрок с таким ID не найден";return k||null}
 async function setAdminLevel(){
- if(me!=="admin")return;const k=target();if(!k)return;
+ if(staffRole!=="main")return;const k=target();if(!k)return;
  const level=Math.floor(+$("alevel").value);if(!(level>=1&&level<=10000))return $("ares").textContent="Уровень должен быть от 1 до 10000";
  if(!confirm(`Установить игроку ${users[k].nick} итоговый уровень ${level}?`))return;
  try{const r=await api("nd_admin_set_level",{p_token:sessionToken,p_target_id:users[k].id,p_level:level});$("ares").textContent=`Уровень игрока ${users[k].nick} установлен на ${r.level??level}`;await loadAdmin();await loadProg()}catch(e){$("ares").textContent=e.message||"Ошибка"}
 }
 async function changeAdminLevels(delta){
- if(me!=="admin")return;const k=target();if(!k)return;
+ if(staffRole!=="main")return;const k=target();if(!k)return;
  const amount=Math.floor(+$("alevel").value);if(!(amount>=1&&amount<=10000))return $("ares").textContent="Количество уровней должно быть от 1 до 10000";
  const action=delta>0?`выдать ${amount} уровней игроку ${users[k].nick}`:`забрать ${amount} уровней у игрока ${users[k].nick}`;
  if(!confirm(`Подтвердить: ${action}?`))return;
@@ -929,11 +935,11 @@ async function changeAdminLevels(delta){
 $("agivelevel").onclick=()=>changeAdminLevels(1);
 $("atakelevel").onclick=()=>changeAdminLevels(-1);
 $("asframe").onclick=async()=>{
- if(me!=="admin")return;const k=target();if(!k)return;
+ if(staffRole!=="main")return;const k=target();if(!k)return;
  try{const r=await api("nd_admin_give_frame",{p_token:sessionToken,p_target_id:users[k].id,p_frame:Number($("aframe").value)});$("ares").textContent=`Рамка выдана игроку ${users[k].nick}`;await loadAdmin();if(users[k].id===myId())await loadProg()}catch(e){$("ares").textContent=e.message||"Ошибка"}
 };
-$("agivem").onclick=async()=>{if(me!=="admin")return;const k=target();if(!k)return;const n=Math.floor(+$('amoney').value);if(!(n>0))return $("ares").textContent="Введи сумму больше нуля";try{await api("admin_give_money",{p_token:sessionToken,p_target_id:users[k].id,p_amount:n});$("ares").textContent=`Выдано ${f(n)} ₽ игроку ${users[k].nick} (ID ${users[k].id})`;await loadAdmin()}catch(e){$("ares").textContent=e.message||"Ошибка"}};
-$("agivei").onclick=async()=>{if(me!=="admin")return;const k=target();if(!k)return;const it=ALL.find(x=>x[1]===$("aitem").value),q=Math.min(100,Math.floor(+$('aqty').value));if(!it||!(q>0))return $("ares").textContent="Выбери предмет и количество";try{await api("admin_give_item",{p_token:sessionToken,p_target_id:users[k].id,p_item:it,p_qty:q});$("ares").textContent=`Выдано: ${it[0]} ${it[1]} x${q} игроку ${users[k].nick} (ID ${users[k].id})`;await loadAdmin()}catch(e){$("ares").textContent=e.message||"Ошибка"}};
+$("agivem").onclick=async()=>{if(staffRole!=="main")return;const k=target();if(!k)return;const n=Math.floor(+$('amoney').value);if(!(n>0))return $("ares").textContent="Введи сумму больше нуля";try{await api("admin_give_money",{p_token:sessionToken,p_target_id:users[k].id,p_amount:n});$("ares").textContent=`Выдано ${f(n)} ₽ игроку ${users[k].nick} (ID ${users[k].id})`;await loadAdmin()}catch(e){$("ares").textContent=e.message||"Ошибка"}};
+$("agivei").onclick=async()=>{if(staffRole!=="main")return;const k=target();if(!k)return;const it=ALL.find(x=>x[1]===$("aitem").value),q=Math.min(100,Math.floor(+$('aqty').value));if(!it||!(q>0))return $("ares").textContent="Выбери предмет и количество";try{await api("admin_give_item",{p_token:sessionToken,p_target_id:users[k].id,p_item:it,p_qty:q});$("ares").textContent=`Выдано: ${it[0]} ${it[1]} x${q} игроку ${users[k].nick} (ID ${users[k].id})`;await loadAdmin()}catch(e){$("ares").textContent=e.message||"Ошибка"}};
 const AV=["🦝","🐀","🦊","🐺","🦅","🐙","👾","🤠","🐱","🐶","🐼","🦁","🐯","🐸","🐵","🦄","🐲","🤖","👽","💀","🔥","⚡","👑","😎"];
 const pkey=()=>"novadrop_prof_"+me;
 function prof(){try{return JSON.parse(localStorage.getItem(pkey()))||{}}catch(e){return{}}}
@@ -1003,7 +1009,7 @@ function profHtml(d){
  // Титул и рамка загружаются из общей базы, поэтому их видят другие игроки.
  const shownTitle=d.title!=null?d.title:(isMe&&PG&&PG.title!=null?PG.title:null);
  const st=[["Деньги",f(d.balance)+" ₽"],["Предметов в хламе",f(d.items)],["Открыто кейсов",f(d.opened)],["Стоимость хлама",f(d.value)+" ₽"],["Уровень",lv]];
- return `<div class="pubhead"><div class="av" data-f="${frame}" aria-label="Рамка профиля">${avatarHtml}</div><div class="pubmeta"><h2>${esc(d.nick)}${d.online?'<span class="dot"></span>':""}</h2><div class="pubtitle">${titleBadge(shownTitle)}</div><div class="hint">ID ${esc(d.id)} · ${d.online?"в сети":"не в сети"}</div><div class="hint">${frame>=100?"✦ Лимитная рамка: "+esc(frameName(frame)):frame>0?"Рамка: "+esc(frameName(frame)):"Рамка профиля"}</div></div></div><div class="pst">${st.map(x=>`<div><b>${x[1]}</b>${x[0]}</div>`).join("")}</div>${ui.err?`<p style="color:var(--bad)">${esc(ui.err)}</p>`:""}
+ return `<div class="pubhead"><div class="av" data-f="${frame}" aria-label="Рамка профиля">${avatarHtml}</div><div class="pubmeta"><h2>${esc(d.nick)}${d.online?'<span class="dot"></span>':""}</h2><div class="pubtitle">${badgeFor(d.id,shownTitle)}</div><div class="hint">ID ${esc(d.id)} · ${d.online?"в сети":"не в сети"}</div><div class="hint">${frame>=100?"✦ Лимитная рамка: "+esc(frameName(frame)):frame>0?"Рамка: "+esc(frameName(frame)):"Рамка профиля"}</div></div></div><div class="pst">${st.map(x=>`<div><b>${x[1]}</b>${x[0]}</div>`).join("")}</div>${ui.err?`<p style="color:var(--bad)">${esc(ui.err)}</p>`:""}
 <div class="yn"><button class="ghost" data-m="viewinv">Посмотреть инвентарь</button>${!isMe&&d.online?'<button data-m="trade">Кинуть трейд</button>':""}${!isMe?'<button class="ghost" data-m="goTx">Перевод</button>':""}<button class="ghost" data-m="close">Закрыть</button></div>`;
 }
 function invHtml(d){
@@ -1051,13 +1057,13 @@ $("mbox").onclick=async e=>{
 };
 $("mbox").addEventListener("change",e=>{if(e.target.id==="tmoney"){tmoney=Math.max(0,Math.min(Math.floor(+e.target.value||0),bal));e.target.value=tmoney||"";agr.on=false;pushOffer()}});
 $("md").onclick=e=>{if(e.target.id==="md"&&ui.view&&!net.trade&&!net.invite&&!net.result){ui.view=null;renderModal()}};
-async function openProfile(id){
+async function openProfile(id){await staffEnsure();
  try{ui={view:"prof",data:await api("nd_profile",{p_token:sessionToken,p_id:id}),err:""}}catch(e){ui={view:null,data:null,err:""};alert(e.message)}
  renderModal();
 }
 async function loadTop(){
- try{const r=await api("nd_leaderboard_with_titles",{p_token:sessionToken}),id=myId();
-  $("lb").innerHTML=`<div class="lr h"><span>Место</span><span>Ник и титул</span><span>ID</span><span style="text-align:right">Деньги</span></div>`+r.top.map(u=>`<div class="lr ${u.id===id?"me":""}" data-id="${esc(u.id)}"><span class="rk ${u.rank<4?"r"+u.rank:""}">${u.rank}</span><span class="lr-name"><span class="lr-nick">${esc(u.nick)}${u.online?'<span class="dot"></span>':""}</span>${u.title!=null?titleBadge(u.title):""}</span><span class="li">${esc(u.id)}</span><span class="lb">${f(u.balance)} ₽</span></div>`).join("")+(r.me>100?`<p class="hint" style="margin-top:10px">Твоё место: ${r.me}</p>`:"")}catch(e){$("lb").textContent=e.message}
+ try{await staffEnsure();const r=await api("nd_leaderboard_with_titles",{p_token:sessionToken}),id=myId();
+  $("lb").innerHTML=`<div class="lr h"><span>Место</span><span>Ник и титул</span><span>ID</span><span style="text-align:right">Деньги</span></div>`+r.top.map(u=>`<div class="lr ${u.id===id?"me":""}" data-id="${esc(u.id)}"><span class="rk ${u.rank<4?"r"+u.rank:""}">${u.rank}</span><span class="lr-name"><span class="lr-nick">${esc(u.nick)}${u.online?'<span class="dot"></span>':""}</span>${badgeFor(u.id,u.title)}</span><span class="li">${esc(u.id)}</span><span class="lb">${f(u.balance)} ₽</span></div>`).join("")+(r.me>100?`<p class="hint" style="margin-top:10px">Твоё место: ${r.me}</p>`:"")}catch(e){$("lb").textContent=e.message}
 }
 $("lb").onclick=e=>{const r=e.target.closest("[data-id]");if(r)openProfile(r.dataset.id)};
 function renderTx(){$("txinv").innerHTML=inv.length?inv.map((it,i)=>`<div class="card ${txSel.has(i)?"pick":""}" data-ti="${i}" style="--c:${col(it[2])};cursor:pointer;${txSel.has(i)?"outline:2px solid var(--hazard)":""}"><div class="e">${it[0]}</div><div class="n">${f(it[3])} ₽</div></div>`).join(""):'<p class="empty">Хлама нет</p>'}
@@ -1080,11 +1086,11 @@ $("txgo").onclick=async()=>{
  busy=false;$("txgo").disabled=false;
 };
 $("atake").onclick=async()=>{
- if(me!=="admin")return;const k=target();if(!k)return;const n=Math.floor(+$("amoney").value);if(!(n>0))return $("ares").textContent="Введи сумму больше нуля";
+ if(staffRole!=="main")return;const k=target();if(!k)return;const n=Math.floor(+$("amoney").value);if(!(n>0))return $("ares").textContent="Введи сумму больше нуля";
  try{await api("nd_admin_take",{p_token:sessionToken,p_target_id:users[k].id,p_amount:n});$("ares").textContent=`Списано ${f(n)} ₽ у ${users[k].nick} (ID ${users[k].id})`;if(users[k].id===myId()){await flush();await claim()}await loadAdmin()}catch(e){$("ares").textContent=e.message||"Ошибка"}
 };
 $("atakei").onclick=async()=>{
- if(me!=="admin")return;const k=target();if(!k)return;
+ if(staffRole!=="main")return;const k=target();if(!k)return;
  const it=ALL.find(x=>x[1]===$("aitem").value),q=Math.min(100,Math.floor(+$("aqty").value));
  if(!it||!(q>0))return $("ares").textContent="Выбери предмет и количество";
  try{await api("nd_admin_take_item",{p_token:sessionToken,p_target_id:users[k].id,p_item:it,p_qty:q});
@@ -1155,7 +1161,7 @@ $("ifil").onchange=e=>{ifil=e.target.value;renderInv()};
 $("isort").onchange=e=>{isort=e.target.value;renderInv()};
 /* чат и объявления */
 function chatHtml(m){
- const t=new Date(m.at).toLocaleTimeString("ru",{hour:"2-digit",minute:"2-digit"}),dl=(me==="admin"&&m.id!=null)?`<button class="del" data-del="${m.id}" title="Удалить" aria-label="Удалить сообщение">🗑</button>`:"";
+ const t=new Date(m.at).toLocaleTimeString("ru",{hour:"2-digit",minute:"2-digit"}),dl=(staffRole==="main"&&m.id!=null)?`<button class="del" data-del="${m.id}" title="Удалить" aria-label="Удалить сообщение">🗑</button>`:"";
  if(m.kind==="chat")return `<div class="cm"><b${m.adm?' class="adm"':""}>${m.adm?"👑 ":""}${esc(m.nick)}</b><small>${t}</small>${dl}<div>${esc(m.text)}</div></div>`;
  const ic={ban:"⛔",mute:"🔇",unban:"✅",unmute:"✅",ann:"📢"}[m.kind]||"ℹ️";
  return `<div class="cs2 k-${m.kind}"><span>${ic}</span><div>${esc(m.text)}<small>${t}</small></div>${dl}</div>`;
@@ -1180,7 +1186,7 @@ document.addEventListener("click",e=>{if(!$("pal").hidden&&!e.target.closest("#p
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("pal").hidden){$("pal").hidden=true;$("palbtn").setAttribute("aria-expanded","false")}});
 applyAccent(document.documentElement.getAttribute("data-accent")||"orange");
 $("chatf").onclick=async e=>{
- const b=e.target.closest("[data-del]");if(!b||me!=="admin")return;
+ const b=e.target.closest("[data-del]");if(!b||staffRole!=="main")return;
  if(!confirm("Удалить это сообщение для всех?"))return;
  try{await api("nd_admin_chat_delete",{p_token:sessionToken,p_id:+b.dataset.del});chatMsgs=chatMsgs.filter(x=>String(x.id)!==b.dataset.del);renderChat();$("chres").textContent=""}
  catch(er){const s=er.message||"";$("chres").textContent=/function|find|exist|404/i.test(s)?"На сервере ещё нет функции nd_admin_chat_delete. Её нужно добавить в Supabase (SQL).":(s||"Ошибка")}
@@ -1233,11 +1239,23 @@ $("annsend").onclick=async()=>{
  if(!["main","admin"].includes(staffRole))return;
  try{await api("nd_admin_announce",{p_token:sessionToken,p_text:$("anntext").value});$("anntext").value="";$("annres").textContent="Объявление отправлено"}catch(e){$("annres").textContent=e.message||"Ошибка"}
 };
-async function loadPromos(){if(me!=="admin")return;try{promos=await api("nd_admin_promo_list",{p_token:sessionToken})||[];renderPromos()}catch(e){}}
+async function loadPromos(){if(staffRole!=="main")return;try{promos=await api("nd_admin_promo_list",{p_token:sessionToken})||[];renderPromos()}catch(e){$("pres").textContent="Не удалось загрузить промокоды: "+(e.message||"ошибка")}}
 function renderPromos(){$("plist").innerHTML=promos.length?promos.map(p=>`<div class="hx"><span><b>${esc(p.code)}</b> ${p.money?f(p.money)+" ₽":""} ${p.item?esc(p.item)+" x"+p.qty:""}</span><span>${p.used}/${p.max}${p.expires_at?" до "+fmtDT(p.expires_at):""}</span><button class="danger" data-pd="${esc(p.code)}" style="padding:4px 10px;font-size:13px">Удалить</button></div>`).join(""):'<p class="empty">Промокодов нет</p>'}
-$("plist").onclick=async e=>{const b=e.target.closest("[data-pd]");if(!b)return;try{await api("nd_admin_promo_delete",{p_token:sessionToken,p_code:b.dataset.pd});loadPromos()}catch(er){$("pres").textContent=er.message}};
+$("plist").onclick=async e=>{
+ const b=e.target.closest("[data-pd]");if(!b||staffRole!=="main")return;
+ const code=b.dataset.pd;if(!confirm(`Удалить промокод ${code}?`))return;
+ b.disabled=true;$("pres").textContent="Удаляю…";
+ try{
+  for(const c of [...new Set([code,code.toUpperCase(),code.toLowerCase()])]){
+   await api("nd_admin_promo_delete",{p_token:sessionToken,p_code:c});
+   await loadPromos();
+   if(!promos.some(p=>p.code===code))break;
+  }
+  $("pres").textContent=promos.some(p=>p.code===code)?"Сервер не удалил промокод. Нужно проверить функцию nd_admin_promo_delete в Supabase.":"Промокод удалён";
+ }catch(er){$("pres").textContent="Не удалось удалить: "+(er.message||"ошибка");b.disabled=false}
+};
 $("pcreate").onclick=async()=>{
- if(me!=="admin")return;
+ if(staffRole!=="main")return;
  try{await api("nd_admin_promo_create",{p_token:sessionToken,p_code:$("pcode").value,p_money:Math.floor(+$("pmoney").value||0),p_item:$("pitem").value,p_frame:$("pframe").value?Number($("pframe").value):null,p_qty:Math.floor(+$("pqty").value||1),p_max_uses:Math.floor(+$("pmax").value||1),p_hours:Math.floor(+$("phours").value||0)});$("pres").textContent="Промокод создан";$("pcode").value="";loadPromos()}catch(e){$("pres").textContent=e.message||"Ошибка"}
 };
 /* ===== сервер считает игру: сохранение с клиента отключено ===== */
@@ -1317,6 +1335,13 @@ renderMines();
 /* ===== NovaDrop v3: прогресс, коллекция, рынок, друзья ===== */
 const TITLES=[[1,"Новичок"],[3,"Искатель"],[5,"Мусорщик"],[10,"Охотник за редкостями"],[15,"Коллекционер"],[25,"Легенда NovaDrop"],[40,"Миф"],[50,"Бессмертный"]];
 const titleBadge=(title)=>{const i=Math.max(0,Math.min(Number(title)||0,TITLES.length-1));return `<span class="nd-title t${i}">${esc(TITLES[i][1])}</span>`};
+const STAFF_LABEL={owner:"Владелец сайта",main:"Ст. админ",admin:"Мл. админ"},STAFF_ICON={owner:"👑",main:"🛡️",admin:"🔰"};
+let STAFF={},staffAt=0;
+const ownRole=()=>me==="admin"?"owner":staffRole==="main"?"main":staffRole==="admin"?"admin":null;
+const roleOfId=id=>STAFF[id]||(id&&id===myId()?ownRole():null);
+const staffBadge=r=>`<span class="nd-title st-${r}">${STAFF_ICON[r]} ${STAFF_LABEL[r]}</span>`;
+const badgeFor=(id,title)=>{const r=roleOfId(id);return r?staffBadge(r):(title!=null?titleBadge(title):"")};
+async function staffEnsure(force){if(!force&&Date.now()-staffAt<60000)return;staffAt=Date.now();try{const r=await api("nd_staff_public",{p_token:sessionToken});if(Array.isArray(r)){const m={};r.forEach(x=>{m[x.id]=x.role});STAFF=m}}catch(e){}}
 const FRAMES=[[0,0,"Без рамки"],[1,5,"Бронзовая"],[6,8,"Ледяная"],[2,10,"Синяя неоновая"],[11,12,"Природная"],[7,15,"Огненная"],[12,18,"Техно"],[3,20,"Фиолетовая"],[4,25,"Золотая"],[8,30,"Электрическая"],[9,35,"Изумрудная"],[10,40,"Алмазная"],[13,45,"Космическая"],[5,50,"Радужная"],[14,60,"Пурпурная"],[15,75,"Легендарная"]];
 const LIMITED=[[100, "Королевская"], [101, "Огненная"], [102, "Кибер-неон"], [103, "Радужная"], [104, "Ледяная"], [105, "Электрическая"], [106, "Демоническая"], [107, "Космическая"], [108, "Тёмный дракон"], [109, "Ангельская"], [110, "Галактическая"], [111, "Аврора"]];
 let OWNED=[];
@@ -1325,7 +1350,7 @@ const SEASON_PER=150,SEASON_MAX=15,CASE_BY=Object.fromEntries(CASES.map(c=>[c.id
 let PG=null,COL=null,FR=[],frOn=null,bgBusy=false,rankCat="level";
 let MK={v:"buy",q:"",tier:"",sort:"new",list:[],my:null,pick:null};
 function xpLvl(xp){let l=1,x=Math.max(0,Number(xp)||0),need=60;while(x>=need){x-=need;l++;need=60+30*(l-1)}return{l,x,need}}
-const titleOf=p=>{const L=xpLvl(p.xp).l;let i=Math.min(p.title||0,TITLES.length-1);if(TITLES[i][0]>L)i=0;return TITLES[i][1]};
+const titleOf=p=>{const sr=ownRole();if(sr)return STAFF_LABEL[sr];const L=xpLvl(p.xp).l;let i=Math.min(p.title||0,TITLES.length-1);if(TITLES[i][0]>L)i=0;return TITLES[i][1]};
 const sErr=e=>{const s=(e&&e.message)||"";return /Could not find|schema cache|404/i.test(s)?"Раздел ещё не подключён на сервере (нужно выполнить progress.sql в Supabase).":(s||"Ошибка")};
 function toast(t){const e=$("toast");e.textContent=t;e.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>{e.hidden=true},3600)}
 function takeSnap(r){if(r&&r.balance!=null){applyAccount(r);render()}}
@@ -1360,9 +1385,9 @@ function renderProg(){
 }
 async function loadRank(cat){
  rankCat=cat;document.querySelectorAll("#rkc button").forEach(b=>b.classList.toggle("on",b.dataset.rk===cat));
- try{const r=await api("nd_top2",{p_token:sessionToken,p_cat:cat}),el=$("rkl");if(!el)return;
+ try{await staffEnsure();const r=await api("nd_top2",{p_token:sessionToken,p_cat:cat}),el=$("rkl");if(!el)return;
   const fm=v=>cat==="level"?"ур. "+xpLvl(v).l:cat==="earned"?f(v)+" ₽":f(v);
-  el.innerHTML=r.top.length?r.top.map(u=>`<div class="rr ${u.id===myId()?"me":""}" data-id="${esc(u.id)}"><span class="rk ${u.rank<4?"r"+u.rank:""}">${u.rank}</span><span class="rr-name"><span class="rr-nick">${esc(u.nick)}${u.online?'<span class="dot"></span>':""}</span>${u.title!=null?titleBadge(u.title):""}</span><b>${fm(u.val)}</b></div>`).join("")+`<p class="hint" style="margin-top:8px">Твоё место: ${r.rank} · ${fm(r.me)}</p>`:'<p class="empty">Пока никого</p>'}
+  el.innerHTML=r.top.length?r.top.map(u=>`<div class="rr ${u.id===myId()?"me":""}" data-id="${esc(u.id)}"><span class="rk ${u.rank<4?"r"+u.rank:""}">${u.rank}</span><span class="rr-name"><span class="rr-nick">${esc(u.nick)}${u.online?'<span class="dot"></span>':""}</span>${badgeFor(u.id,u.title)}</span><b>${fm(u.val)}</b></div>`).join("")+`<p class="hint" style="margin-top:8px">Твоё место: ${r.rank} · ${fm(r.me)}</p>`:'<p class="empty">Пока никого</p>'}
  catch(e){const el=$("rkl");if(el)el.textContent=sErr(e)}
 }
 $("pgbody").onclick=async e=>{
@@ -1423,7 +1448,7 @@ async function loadFr(){try{FR=await api("nd_fr_list",{p_token:sessionToken});re
 function renderFr(){
  $("frme").textContent=myId()||"";
  const ok=FR.filter(x=>x.status==="ok"),inc=FR.filter(x=>x.status==="in"),out=FR.filter(x=>x.status==="out");
- const row=(x,btns)=>`<div class="fr"><span>${esc(x.nick)}${x.online?'<span class="dot"></span>':""} <small class="hint">ур. ${x.level} · ID ${esc(x.id)}</small></span><span class="fb">${btns}</span></div>`;
+ const row=(x,btns)=>`<div class="fr"><span>${esc(x.nick)}${x.online?'<span class="dot"></span>':""} <small class="hint">ур. ${x.level} · ID ${esc(x.id)}</small> ${roleOfId(x.id)?staffBadge(roleOfId(x.id)):""}</span><span class="fb">${btns}</span></div>`;
  $("frbody").innerHTML=(inc.length?`<h2 class="sh">Заявки в друзья</h2>`+inc.map(x=>row(x,`<button data-fy="${x.id}">Принять</button><button class="ghost" data-fn="${x.id}">Отклонить</button>`)).join(""):"")
   +`<h2 class="sh">Друзья (${ok.length})</h2>`+(ok.length?[...ok].sort((a,b)=>b.online-a.online).map(x=>row(x,`<button data-ft="${x.id}" ${x.online?"":"disabled"} title="${x.online?"":"Друг не в сети"}">Обмен</button><button class="ghost" data-fd="${x.id}" aria-label="Удалить из друзей">✕</button>`)).join(""):'<p class="empty">Пока никого. Добавь друга по ID</p>')
   +(out.length?`<h2 class="sh">Отправленные заявки</h2>`+out.map(x=>row(x,`<button class="ghost" data-fd="${x.id}">Отменить</button>`)).join(""):"");
@@ -1440,7 +1465,7 @@ $("frbody").onclick=async e=>{const b=e.target.closest("button");if(!b||b.disabl
 $("frcopy").onclick=()=>{const t=myId()||"";try{navigator.clipboard.writeText(t);toast("ID скопирован")}catch(e){toast("ID: "+t)}};
 
 /* ---------- Фон: рынок, друзья, прогресс ---------- */
-async function bgTick(){
+async function bgTick(){staffEnsure();
  if(bgBusy||!sessionToken||!me||document.hidden)return;bgBusy=true;
  try{if(!busy&&!dirty&&!saveBusy){const r=await api("nd_mk_collect",{p_token:sessionToken});if(r&&r.collected>0&&!busy&&!dirty&&!saveBusy){takeSnap(r);sfx("sell",3);toast(`Продано на рынке: +${f(r.collected)} ₽`);if(!$("t-mk").hidden&&MK.v==="my")mkMy()}}}catch(e){}
  try{FR=await api("nd_fr_list",{p_token:sessionToken});const on=new Set(FR.filter(x=>x.status==="ok"&&x.online).map(x=>x.id));if(frOn)for(const x of FR)if(x.status==="ok"&&x.online&&!frOn.has(x.id)){toast(`🟢 ${x.nick} зашёл в игру`);sfx("invite")}frOn=on;
